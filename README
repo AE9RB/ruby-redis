@@ -1,0 +1,108 @@
+I needed the redis server protocol in EventMachine.
+I implemented the first commands used by ruby-benchmark.
+There's a wider performance gap on my laptop, but the
+numbers under virtualization are what I care about.
+
+Test parameters:
+EC2 ami-2a1fec43 on c1.medium
+Ruby 1.9.2.p180
+1000 parallel clients 
+8000 bytes payload
+50000 keyspace   
+
+******* ruby-redis *******             ******* redis 2.2.7 *******
+
+====== PING (inline) ======            ====== PING (inline) ======
+  10000 completed in 0.65 seconds        10000 completed in 0.58 seconds
+100.00% <= 133 milliseconds            100.00% <= 42 milliseconds
+15479.88 requests per second           17271.16 requests per second
+                                       
+====== PING ======                     ====== PING ======
+  10000 completed in 0.64 seconds        10000 completed in 0.63 seconds
+100.00% <= 99 milliseconds             100.00% <= 84 milliseconds
+15576.32 requests per second           15822.79 requests per second
+                                       
+====== MSET (10 keys) ======           ====== MSET (10 keys) ======
+  10000 completed in 9.10 seconds        10000 completed in 7.59 seconds
+100.00% <= 1469 milliseconds           100.00% <= 841 milliseconds
+1098.90 requests per second            1316.83 requests per second
+                                       
+====== SET ======                      ====== SET ======
+  10000 completed in 1.44 seconds        10000 completed in 0.95 seconds
+100.00% <= 185 milliseconds            100.00% <= 76 milliseconds
+6968.64 requests per second            10504.20 requests per second
+                                       
+====== GET ======                      ====== GET ======
+  10000 completed in 1.25 seconds        10000 completed in 1.36 seconds
+100.00% <= 205 milliseconds            100.00% <= 104 milliseconds
+7974.48 requests per second            7352.94 requests per second
+                                       
+====== INCR ======                     ====== INCR ======
+  10000 completed in 0.75 seconds        10000 completed in 0.60 seconds
+100.00% <= 125 milliseconds            100.00% <= 43 milliseconds
+13280.21 requests per second           16528.93 requests per second
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

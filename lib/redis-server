@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+require 'eventmachine'
+EventMachine.epoll
+new_size = EM.set_descriptor_table_size( 60000 )
+
+require_relative 'protocol.rb'
+require_relative 'commands.rb'
+class RedisServer < RedisProtocol
+  include RedisCommands
+end
+
+EventMachine.run {
+  
+  ruby_version = RbConfig::CONFIG["RUBY_PROGRAM_VERSION"]
+  port = 6379
+  
+  EventMachine::start_server "127.0.0.1", port, RedisServer
+
+  puts "                _._                                                    "
+  puts "           _.-``__ ''-._                                               "
+  puts "      _.-``    `.  `_.  ''-._           ruby-redis (Ruby #{ruby_version})"
+  puts "  .-`` .-```.  ```\/    _.,_ ''-._                                     "
+  puts " (    '      ,       .-`  | `,    )     Running in stand alone mode    "
+  puts " |`-._`-...-` __...-.``-._|'` _.-'|     Port: " + port.to_s
+  puts " |    `-._   `._    /     _.-'    |     PID: " + Process.pid.to_s
+  puts "  `-._    `-._  `-./  _.-'    _.-'                                     "
+  puts " |`-._`-._    `-.__.-'    _.-'_.-'|                                    "
+  puts " |    `-._`-._        _.-'_.-'    |       https://ruby-redis.io        "
+  puts "  `-._    `-._`-.__.-'_.-'    _.-'                                     "
+  puts " |`-._`-._    `-.__.-'    _.-'_.-'|                                    "
+  puts " |    `-._`-._        _.-'_.-'    |                                    "
+  puts "  `-._    `-._`-.__.-'_.-'    _.-'                                     "
+  puts "      `-._    `-.__.-'    _.-'                                         "
+  puts "          `-._        _.-'                                             "
+  puts "              `-.__.-'                                                 "
+
+}
