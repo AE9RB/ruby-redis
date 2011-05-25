@@ -1,5 +1,5 @@
 I needed the redis server protocol in EventMachine.
-I implemented the first commands used by ruby-benchmark.
+I implemented the first commands used by redis-benchmark.
 There's a wider performance gap on my laptop, but the
 numbers under virtualization are what I care about.
 
@@ -41,68 +41,3 @@ Ruby 1.9.2.p180
   10000 completed in 0.75 seconds        10000 completed in 0.60 seconds
 100.00% <= 125 milliseconds            100.00% <= 43 milliseconds
 13280.21 requests per second           16528.93 requests per second
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
