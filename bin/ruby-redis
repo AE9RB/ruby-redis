@@ -60,10 +60,10 @@ lambda do # keep config out of top namespace
       # if (fp) { fprintf(fp,"%d\n",(int)getpid()); fclose(fp); }
     end
   
-    Redis.logger.notice "Server started, Redis version %s (Ruby)" % Redis::VERSION
+    Redis.logger.notice "Server started, Ruby Redis version %s" % Redis::VERSION
     Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
 
-    # The test suite blocks until it gets the id from the log.
+    # The test suite blocks until it gets the pid from the log.
     Redis.logger.flush
   
   }

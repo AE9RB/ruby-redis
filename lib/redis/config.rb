@@ -14,6 +14,7 @@ class Redis
       self[:daemonize] = false
       self[:port] = 6379
       self[:pidfile] = "/var/run/redis.pid"
+      self[:databases] = 16
 
       # load from ARGF or IO compatible interface
       argf.each do |line|
