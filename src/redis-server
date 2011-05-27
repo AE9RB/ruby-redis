@@ -1,0 +1,3 @@
+#!/usr/bin/env ruby
+# This exists because src/redis-server is hardcoded into redis tests
+load File.expand_path '../../bin/ruby-redis', __FILE__
