@@ -1,12 +1,12 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    eventmachine (0.12.10)
+    eventmachine (1.0.0.beta.3)
     minitest (2.1.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  eventmachine
+  eventmachine (= 1.0.0.beta.3)
   minitest
