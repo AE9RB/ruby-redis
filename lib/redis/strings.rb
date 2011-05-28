@@ -1,4 +1,5 @@
 class Redis
+  
   module Strings
   
     # Note: Redis does not have a dedicated integer type.
@@ -6,28 +7,25 @@ class Redis
     # so further calls will be faster.
     
     def redis_GET key
-      value = @database[key]
-      if value==nil
-        send_data "$-1\r\n"
-      else
-        send_data "$#{value.size}\r\n#{value}\r\n"
-      end
+      send_redis @database[key.to_s]
     end
     
     def redis_SET key, value
-      @database[key] = value
+      @database[key.to_s] = value
       send_data "+OK\r\n"
     end
     
     def redis_MSET *args
+      #TODO keys to_s
       @database.merge! Hash[*args]
       send_data "+OK\r\n"
     end
     
     def redis_INCR key
-      value = (@database[key].to_i || 0) + 1
+      key = key.to_s
+      value = (@database[key] || 0).to_i + 1
       @database[key] = value
-      send_data ":#{value}\r\n"
+      send_redis value
     end
       
   end

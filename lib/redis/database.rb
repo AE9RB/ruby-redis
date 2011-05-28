@@ -1,7 +1,7 @@
 class Redis
   module Database
   
-    @@databases = [{}]
+    @@databases ||= [{}]
     
     def initialize
       @database = @@databases[0]

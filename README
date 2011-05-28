@@ -3,7 +3,7 @@ I implemented the first commands used by redis-benchmark.
 There's a wider performance gap on my laptop, but the
 numbers under virtualization are what I care about.
 
-Tests from redis 2.2.7 are running.  Run test.rb.
+Tests from redis 2.2.8 are running.  Run test.rb.
 Currently passing: printver auth protocol
 
 Test parameters:
