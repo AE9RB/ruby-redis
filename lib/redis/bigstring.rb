@@ -39,8 +39,6 @@ class Redis
         restore_split
       end
 
-      Redis.logger.warn 'UNTESTED CODE PATH'
-      
       unless @pending
         size = reduce(0){|x,y|x+y.size}
         return nil unless size >= length
@@ -48,14 +46,14 @@ class Redis
         clear
         remainder = size - length
         if remainder > 0
-          last_string = @pending.last
-          @pending.last.replace last_string[0...-remainder]
+          last_string = @pending[-1]
+          @pending[-1] = last_string[0...-remainder]
           push last_string[-remainder..-1]
         end
       end
       
       # eat newline
-      return nil unless get_redis
+      return nil unless gets_redis
       result = @pending
       @pending = nil
       result

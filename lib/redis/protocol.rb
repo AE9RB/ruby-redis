@@ -19,7 +19,7 @@ class Redis
         send_data "$#{data.size}\r\n"
         send_data data
         send_data "\r\n"
-      elsif BigString === str
+      elsif BigString === data
         data_size = data.reduce(0){|x,y|x+y.size}
         send_data "$#{data_size}\r\n"
         data.each {|d| send_data d }
@@ -30,6 +30,45 @@ class Redis
         # development helper
         raise 'not a redis type'
       end
+    end
+
+    # Redis commands are methods on the connection object.
+    # Most commands aren't mixed in until after authentication.
+    # Arity is checked by Ruby.
+    def redis_PING
+      send_data "+PONG\r\n"
+    end
+  
+    # process an entire frame of redis protocol
+    def receive_redis str
+      if @command
+        @arguments << str
+      else
+        @command = str
+        #TODO detect telnet shortcuts
+      end
+      if @multi_bulk > 0
+        @multi_bulk -= 1
+        return unless @multi_bulk == 0
+      end
+      if @command and !@command.empty?
+        begin
+          upcase_command_string = @command.to_s.upcase
+          begin
+            send("redis_#{@command.to_s.upcase}", *@arguments)
+          rescue NoMethodError => e
+            raise e unless e.message.index "undefined method `redis_#{@command.to_s.upcase}'"
+            send_data "-ERR unknown command #{@command.to_s.dump}\r\n"
+          end
+        rescue Exception => e
+          Redis.logger.warn e.class
+          Redis.logger.warn e.message
+          e.backtrace.each {|bt|Redis.logger.warn bt}
+          send_data "-ERR #{e.message}\r\n"
+        end
+      end
+      @command = nil
+      @arguments = []
     end
     
     def receive_data data
@@ -66,45 +105,6 @@ class Redis
         end
       end
     end
-
-    # Redis commands are methods on the connection object.
-    # Most commands aren't mixed in until after authentication.
-    # Arity is checked by Ruby.
-    def redis_PING
-      send_data "+PONG\r\n"
-    end
-  
-    # process an entire frame of redis protocol
-    def receive_redis str
-      if @command
-        @arguments << str
-      else
-        @command = str
-        #TODO detect telnet shortcuts
-      end
-      if @multi_bulk > 0
-        @multi_bulk -= 1
-        return unless @multi_bulk == 0
-      end
-      if @command and !@command.empty?
-        begin
-          begin
-            send("redis_#{@command.upcase}", *@arguments)
-          rescue NoMethodError => e
-            raise e unless e.message.index "undefined method `redis_#{@command.upcase}'"
-            send_data "-ERR unknown command #{@command.dump}\r\n"
-          end
-        rescue Exception => e
-          # Redis.logger.warn e.class
-          # Redis.logger.warn e.message
-          # e.backtrace.each {|bt|Redis.logger.warn bt}
-          send_data "-ERR #{e.message}\r\n"
-        end
-      end
-      @command = nil
-      @arguments = []
-    end
-
 
   end
 end
