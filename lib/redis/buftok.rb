@@ -5,8 +5,10 @@ class Redis
     # Similar to EventMachine::BufferedTokenizer.
     # This will be ported to C when complete.
     
-    def initialize *args
-      super
+    #TODO max buffer size
+    
+    def initialize
+      super()
       @split = nil
       @pending = nil
       @binary_size = nil

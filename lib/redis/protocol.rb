@@ -27,8 +27,20 @@ class Redis
 
     # Companion to send_data.
     def send_redis data
+      # data = data.to_a.flatten(1) if Hash === data
       if nil == data
         send_data "$-1\r\n"
+      elsif Array === data
+        send_data "*#{data.size}\r\n"
+        data.each do |item|
+          if nil == item
+            send_data "$-1\r\n"
+          else
+            send_data "$#{item.size}\r\n"
+            send_data item
+            send_data "\r\n"
+          end
+        end
       elsif String === data
         send_data "$#{data.size}\r\n"
         send_data data
@@ -36,7 +48,7 @@ class Redis
       elsif Numeric === data
         send_data ":#{data}\r\n"
       else
-        raise 'not a redis type'
+        raise "#{data.class} is not a redis type"
       end
     end
   
@@ -44,6 +56,7 @@ class Redis
     def receive_data data
       @buftok.extract(data) do |command, *arguments|
         next if command.empty?
+        # Redis.logger.warn "running: #{command+arguments}"
         begin
           send "redis_#{command.upcase}", *arguments
         rescue Exception => e

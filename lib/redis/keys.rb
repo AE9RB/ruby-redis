@@ -1,7 +1,17 @@
 class Redis
   module Keys
   
-    #TODO next up in tests
+    def redis_KEYS pattern
+      send_redis(@database.keys.find_all do |key|
+        File.fnmatch pattern, key
+      end.to_a)
+    end
+    
+    def redis_DEL *keys
+      count = 0
+      keys.each { |key| count += 1 unless @database.delete(key){nil} == nil }
+      send_redis count
+    end
       
   end
 end

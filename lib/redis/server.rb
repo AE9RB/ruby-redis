@@ -2,6 +2,7 @@ require_relative '../redis'
 require_relative 'protocol'
 require_relative 'keys'
 require_relative 'strings'
+require_relative 'lists'
 
 require 'eventmachine'
 
@@ -17,10 +18,11 @@ class Redis
       super()
     end
     
-    def authorize *args
+    def authorize
       return if @authorized
       extend Keys
       extend Strings
+      extend Lists
       @authorized = true
     end
     
@@ -43,16 +45,20 @@ class Redis
       end
     end
     
-    def redis_INFO *args
-      send_redis ([
+    def redis_DBSIZE
+      send_redis @database.size
+    end
+    
+    def redis_INFO
+      send_redis([
         "redis_version:%s\r\n",
         "redis_git_sha1:%s\r\n",
         "redis_git_dirty:%d\r\n",
-      ].join) % [
+      ].join % [
         Redis::VERSION,
         'Ruby',
         1,
-      ]
+      ])
     end
     
   end
