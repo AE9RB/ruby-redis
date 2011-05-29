@@ -1,6 +1,6 @@
 require_relative '../redis'
 require_relative 'protocol'
-require_relative 'database'
+require_relative 'keys'
 require_relative 'strings'
 
 require 'eventmachine'
@@ -9,9 +9,9 @@ class Redis
   class Server < EventMachine::Connection
     
     include Protocol
-    include Database
     
     def initialize options={}
+      @database = Redis.databases[0]
       @options = options
       authorize unless options[:requirepass]
       super()
@@ -19,6 +19,7 @@ class Redis
     
     def authorize *args
       return if @authorized
+      extend Keys
       extend Strings
       @authorized = true
     end
@@ -28,21 +29,30 @@ class Redis
         authorize
         send_data "+OK\r\n"
       else
-        send_data "-ERR invalid password\r\n"
+        raise 'invalid password'
       end
     end
 
+    def redis_SELECT db_index
+      db_index = db_index.to_i
+      if db_index < 0 or db_index >= @options[:databases]
+        raise 'index out of range'
+      else
+        @database = Redis.databases[db_index] ||= {}
+        send_data "+OK\r\n"
+      end
+    end
+    
     def redis_INFO *args
-      info = ([
+      send_redis ([
         "redis_version:%s\r\n",
         "redis_git_sha1:%s\r\n",
         "redis_git_dirty:%d\r\n",
       ].join) % [
         Redis::VERSION,
-        'fakesha',
+        'Ruby',
         1,
       ]
-      send_data "$#{info.size}\r\n#{info}\r\n"
     end
     
   end

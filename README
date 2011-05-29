@@ -1,14 +1,9 @@
-I needed the redis server protocol in EventMachine.
-I implemented the first commands used by redis-benchmark.
-There's a wider performance gap on my laptop, but the
-numbers under virtualization are what I care about.
-
 Tests from redis 2.2.8 are running.  Run test.rb.
 Currently passing: printver auth protocol
 
-Test parameters:
+Benchmark parameters:
 EC2 ami-2a1fec43 on c1.medium
-Ruby 1.9.2.p180
+Ruby 1.9.2-p180
 1000 parallel clients 
 8000 bytes payload
 50000 keyspace   

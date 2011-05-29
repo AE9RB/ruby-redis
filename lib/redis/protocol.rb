@@ -1,17 +1,31 @@
-require_relative 'bigstring'
+require_relative 'buftok'
 
 class Redis
   module Protocol
   
-    def initialize
-      @binary_size = nil
-      @str = BigString.new
-      @multi_bulk = 0
-      @command = nil
-      @arguments = []
+    def initialize *args
+      @buftok = BufferedTokenizer.new
       super
     end
     
+    # Redis commands are methods on the connection object.
+    # Most commands aren't mixed in until after authentication.
+    # Arity is checked by Ruby.
+    
+    def redis_PING
+      send_data "+PONG\r\n"
+    end
+
+    def redis_ECHO str
+      send_redis str
+    end
+
+    def redis_QUIT
+      send_data "+OK\r\n"
+      close_connection_after_writing
+    end
+
+    # Companion to send_data.
     def send_redis data
       if nil == data
         send_data "$-1\r\n"
@@ -19,91 +33,32 @@ class Redis
         send_data "$#{data.size}\r\n"
         send_data data
         send_data "\r\n"
-      elsif BigString === data
-        data_size = data.reduce(0){|x,y|x+y.size}
-        send_data "$#{data_size}\r\n"
-        data.each {|d| send_data d }
-        send_data "\r\n"
       elsif Numeric === data
         send_data ":#{data}\r\n"
       else
-        # development helper
         raise 'not a redis type'
       end
     end
-
-    # Redis commands are methods on the connection object.
-    # Most commands aren't mixed in until after authentication.
-    # Arity is checked by Ruby.
-    def redis_PING
-      send_data "+PONG\r\n"
-    end
   
-    # process an entire frame of redis protocol
-    def receive_redis str
-      if @command
-        @arguments << str
-      else
-        @command = str
-        #TODO detect telnet shortcuts
-      end
-      if @multi_bulk > 0
-        @multi_bulk -= 1
-        return unless @multi_bulk == 0
-      end
-      if @command and !@command.empty?
-        begin
-          upcase_command_string = @command.to_s.upcase
-          begin
-            send("redis_#{@command.to_s.upcase}", *@arguments)
-          rescue NoMethodError => e
-            raise e unless e.message.index "undefined method `redis_#{@command.to_s.upcase}'"
-            send_data "-ERR unknown command #{@command.to_s.dump}\r\n"
-          end
-        rescue Exception => e
-          Redis.logger.warn e.class
-          Redis.logger.warn e.message
-          e.backtrace.each {|bt|Redis.logger.warn bt}
-          send_data "-ERR #{e.message}\r\n"
-        end
-      end
-      @command = nil
-      @arguments = []
-    end
-    
+    # Process incoming redis protocol
     def receive_data data
-      @str.restore_split
-      @str << data
-      while true
-        if @binary_size
-          s = @str.read_redis @binary_size
-          break unless s
-          @binary_size = nil
-          receive_redis s
-        else
-          line = @str.gets_redis
-          break unless line
-          case line[0]
-          when '*'
-            @multi_bulk = line[1..-1].to_i
-            if @multi_bulk > 1024*1024
-              @multi_bulk = 0
-              send_data "-ERR Protocol error: invalid multibulk length\r\n"
-            end
-          when '$'
-            @binary_size = line[1..-1].to_i
-            if @binary_size == -1
-              receive_redis nil
-              @binary_size = nil
-            elsif (@binary_size == 0 and line[1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
-              send_data "-ERR Protocol error: invalid bulk length\r\n"
-              @binary_size = nil
-            end
+      @buftok.extract(data) do |command, *arguments|
+        next if command.empty?
+        begin
+          send "redis_#{command.upcase}", *arguments
+        rescue Exception => e
+          if NoMethodError===e and e.message.index "undefined method `redis_#{command.upcase}'"
+            send_data "-ERR unknown command #{command.dump}\r\n"
           else
-            receive_redis line
+            # Redis.logger.warn "#{e.class} : #{e.message}"
+            # e.backtrace.each {|bt|Redis.logger.warn bt}
+            send_data "-ERR #{e.message}\r\n"
           end
         end
       end
+    rescue Exception => e
+      @buftok.flush
+      send_data "-ERR #{e.message}\r\n"
     end
 
   end

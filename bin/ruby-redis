@@ -9,10 +9,17 @@ unless Kernel.respond_to?(:require_relative)
   end
 end
 
-require_relative '../lib/redis'
-require_relative '../lib/redis/server'
-require_relative '../lib/redis/logger'
-require_relative '../lib/redis/config'
+if File.exist? File.expand_path '../../lib/redis/server.rb', __FILE__
+  # Prefer local version (development or /usr/local deployments)
+  require_relative '../lib/redis/server'
+  require_relative '../lib/redis/config'
+  require_relative '../lib/redis/logger'
+else
+  # Use any from the include path, most likely a gem
+  require 'redis/config'
+  require 'redis/server'
+  require 'redis/logger'
+end
 
 if ARGV==['-v'] or ARGV==['--version']
   print "Redis server version %s (Ruby)\n" % Redis::VERSION
