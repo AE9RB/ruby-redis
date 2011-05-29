@@ -1,16 +1,18 @@
+require_relative 'redis/database'
+
 class Redis
   
   VERSION = '0.0.0.pre'
   
   def self.databases
-    @@databases ||= [{}]
+    @@databases ||= [Database.new]
   end
     
 end
 
 class ::String
   def to_redis_i
-    raise 'invalid integer' if self =~ /\D/
+    raise 'invalid integer' unless self =~ /^-?[0-9]*$/
     to_i
   end
 end

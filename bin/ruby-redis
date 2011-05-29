@@ -58,6 +58,7 @@ lambda do # keep config out of top namespace
   EventMachine.epoll
   EventMachine.run {
 
+    #TODO support changing host and EventMachine::start_unix_domain_server
     EventMachine::start_server "127.0.0.1", config[:port], Redis::Server, config
   
     if config[:daemonize]

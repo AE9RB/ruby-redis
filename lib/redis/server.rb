@@ -29,7 +29,7 @@ class Redis
     def redis_AUTH password
       if password == @options[:requirepass]
         authorize
-        send_data "+OK\r\n"
+        Response::OK
       else
         raise 'invalid password'
       end
@@ -40,17 +40,17 @@ class Redis
       if db_index < 0 or db_index >= @options[:databases]
         raise 'index out of range'
       else
-        @database = Redis.databases[db_index] ||= {}
-        send_data "+OK\r\n"
+        @database = Redis.databases[db_index] ||= Database.new
+        Response::OK
       end
     end
     
     def redis_DBSIZE
-      send_redis @database.size
+      @database.size
     end
     
     def redis_INFO
-      send_redis([
+      [
         "redis_version:%s\r\n",
         "redis_git_sha1:%s\r\n",
         "redis_git_dirty:%d\r\n",
@@ -58,7 +58,7 @@ class Redis
         Redis::VERSION,
         'Ruby',
         1,
-      ])
+      ]
     end
     
   end

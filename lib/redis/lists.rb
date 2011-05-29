@@ -3,11 +3,11 @@ class Redis
   module Lists
     
     def redis_RPUSH key, value
-      send_redis (@database[key] ||= []).push(value).size
+      (@database[key] ||= []).push(value).size
     end
     
     def redis_RPOP key
-      send_redis (@database[key] || []).pop
+      (@database[key] || []).pop
     end
       
   end
