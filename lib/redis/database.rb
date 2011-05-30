@@ -20,6 +20,10 @@ class Redis
       return true
     end
     
+    def random_key
+      @dict.keys[rand @dict.size]
+    end
+    
     def [] key
       check_expiry key
       @dict[key]
@@ -46,6 +50,15 @@ class Redis
     
     def size
       @dict.size
+    end
+    
+    def clear
+      @dict.clear
+      @expiry.clear
+    end
+    
+    def empty?
+      @dict.empty?
     end
     
     private

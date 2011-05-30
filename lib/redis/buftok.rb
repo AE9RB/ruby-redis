@@ -12,7 +12,7 @@ class Redis
       @split = nil
       @pending = nil
       @binary_size = nil
-      @multi_bulk = 0
+      @remaining = 0
       @elements = []
     end
     
@@ -21,9 +21,9 @@ class Redis
       push data
       frame do |str|
         @elements << str
-        if @multi_bulk > 0
-          @multi_bulk -= 1
-          next unless @multi_bulk == 0
+        if @remaining > 0
+          @remaining -= 1
+          next unless @remaining == 0
         end
         yield *@elements unless @elements.empty?
         @elements.clear
@@ -57,9 +57,9 @@ class Redis
           break unless line
           case line[0]
           when '*'
-            @multi_bulk = line[1..-1].to_i
-            if @multi_bulk > 1024*1024
-              @multi_bulk = 0
+            @remaining = line[1..-1].to_i
+            if @remaining > 1024*1024
+              @remaining = 0
               raise "Protocol error: invalid multibulk length"
             end
           when '$'
@@ -72,7 +72,9 @@ class Redis
               @binary_size = nil
             end
           else
-            yield line
+            parts = line.split(' ')
+            @remaining = parts.size
+            parts.each {|l| yield l}
           end
         end
       end

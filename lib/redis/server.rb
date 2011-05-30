@@ -1,8 +1,10 @@
 require_relative '../redis'
+require_relative 'config'
 require_relative 'protocol'
 require_relative 'keys'
 require_relative 'strings'
 require_relative 'lists'
+require_relative 'sets'
 
 require 'eventmachine'
 
@@ -11,9 +13,9 @@ class Redis
     
     include Protocol
     
-    def initialize options={}
+    def initialize options=nil
+      @options = options || Config.new
       @database = Redis.databases[0]
-      @options = options
       authorize unless options[:requirepass]
       super()
     end
@@ -23,6 +25,7 @@ class Redis
       extend Keys
       extend Strings
       extend Lists
+      extend Sets
       @authorized = true
     end
     
@@ -36,13 +39,15 @@ class Redis
     end
 
     def redis_SELECT db_index
-      db_index = db_index.to_i
-      if db_index < 0 or db_index >= @options[:databases]
-        raise 'index out of range'
-      else
-        @database = Redis.databases[db_index] ||= Database.new
-        Response::OK
-      end
+      database = Redis.databases[db_index.to_i]
+      raise 'index out of range' unless database
+      @database = database
+      Response::OK
+    end
+    
+    def redis_FLUSHDB
+      @database.clear
+      Response::OK
     end
     
     def redis_DBSIZE
