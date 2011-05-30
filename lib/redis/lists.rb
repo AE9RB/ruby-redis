@@ -5,6 +5,10 @@ class Redis
     def redis_RPUSH key, value
       (@database[key] ||= []).push(value).size
     end
+
+    def redis_LPUSH key, value
+      (@database[key] ||= []).unshift(value).size
+    end
     
     def redis_RPOP key
       (@database[key] || []).pop

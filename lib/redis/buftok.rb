@@ -65,11 +65,11 @@ class Redis
           when '$'
             @binary_size = line[1..-1].to_i
             if @binary_size == -1
+              @binary_size = nil
               yield nil
-              @binary_size = nil
             elsif (@binary_size == 0 and line[1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
-              raise "Protocol error: invalid bulk length"
               @binary_size = nil
+              raise "Protocol error: invalid bulk length"
             end
           else
             parts = line.split(' ')

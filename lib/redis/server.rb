@@ -39,7 +39,7 @@ class Redis
     end
 
     def redis_SELECT db_index
-      database = Redis.databases[db_index.to_i]
+      database = Redis.databases[db_index.to_redis_i]
       raise 'index out of range' unless database
       @database = database
       Response::OK
@@ -54,6 +54,11 @@ class Redis
       @database.size
     end
     
+    def redis_DEBUG type, key=nil
+      raise 'not suported' unless type.downcase == 'object'
+      "{@database.key.class}"
+    end
+    
     def redis_INFO
       [
         "redis_version:%s\r\n",
@@ -61,7 +66,7 @@ class Redis
         "redis_git_dirty:%d\r\n",
       ].join % [
         Redis::VERSION,
-        'Ruby',
+        "Ruby #{RUBY_VERSION}",
         1,
       ]
     end

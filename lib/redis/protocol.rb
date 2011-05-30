@@ -76,7 +76,7 @@ class Redis
     def receive_data data
       @buftok.extract(data) do |command, *arguments|
         # next if command.empty?
-        # Redis.logger.warn "#{command.dump}"
+        # Redis.logger.warn "#{command.dump} #{arguments.collect{|a|a.dump}.join ' '}"
         begin
           send_redis send "redis_#{command.upcase}", *arguments
         rescue Exception => e

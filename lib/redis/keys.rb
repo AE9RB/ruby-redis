@@ -28,11 +28,11 @@ class Redis
     end
     
     def redis_EXPIRE key, seconds
-      @database.expire key, seconds.to_i
+      @database.expire key, seconds.to_redis_i
     end
 
     def redis_EXPIREAT key, timestamp
-      @database.expire_at key, timestamp.to_i
+      @database.expire_at key, timestamp.to_redis_i
     end
     
     def redis_RENAME key, newkey
@@ -50,7 +50,7 @@ class Redis
     
     def redis_MOVE key, db
       raise unless @database.has_key? key
-      Redis.databases[db.to_i][key] = @database[key]
+      Redis.databases[db.to_redis_i][key] = @database[key]
       @database.delete key
       true
     rescue
