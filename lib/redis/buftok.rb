@@ -72,6 +72,7 @@ class Redis
               raise "Protocol error: invalid bulk length"
             end
           else
+            raise "expected '$', got '#{line[0]}'" if @remaining > 0
             parts = line.split(' ')
             @remaining = parts.size
             parts.each {|l| yield l}
