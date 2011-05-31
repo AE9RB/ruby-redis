@@ -12,15 +12,27 @@ end
 
 class ::String
   def to_redis_i
-    raise 'invalid integer' unless self =~ /^-?[0-9]*$/
+    raise 'not an integer' unless self =~ /^-?[0-9]*$/
     to_i
   end
+
+  def to_redis_pos_i
+    to_redis_i.to_redis_pos_i
+  end
+  
 end
 
 class ::Numeric
   def to_redis_i
     to_i
   end
+
+  def to_redis_pos_i
+    i = to_i
+    raise 'is negative' if i < 0
+    i
+  end
+  
 end
 
 

@@ -55,8 +55,13 @@ class Redis
     end
     
     def redis_DEBUG type, key=nil
-      raise 'not suported' unless type.downcase == 'object'
-      "{@database.key.class}"
+      if type.upcase == 'OBJECT'
+        "#{@database[key].class}"
+      elsif type.upcase == 'RELOAD'
+        "TODO: what is reload"
+      else
+        raise 'not suported'
+      end
     end
     
     def redis_INFO

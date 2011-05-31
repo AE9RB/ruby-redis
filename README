@@ -1,5 +1,5 @@
 Tests from redis 2.2.8 are running.  Run test.rb.
-Currently passing: printver auth protocol basic
+Currently running: printver auth protocol basic list
 
 Benchmark parameters:
 EC2 ami-2a1fec43 on c1.medium
