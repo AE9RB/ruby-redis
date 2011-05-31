@@ -98,13 +98,9 @@ class Redis
       begin
         send_redis send "redis_#{command.upcase}", *arguments
       rescue Exception => e
-        if NoMethodError===e and e.message.index "undefined method `redis_#{command.upcase}'"
-          send_data "-ERR unknown command #{command.dump}\r\n"
-        else
-          # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-          # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
-          send_data "-ERR #{e.message}\r\n"
-        end
+        # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+        # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+        send_data "-ERR #{e.message}\r\n"
       end
     end
   

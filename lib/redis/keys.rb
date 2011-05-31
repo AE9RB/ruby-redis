@@ -50,6 +50,7 @@ class Redis
     
     def redis_MOVE key, db
       raise unless @database.has_key? key
+      raise if Redis.databases[db.to_redis_i].has_key? key
       Redis.databases[db.to_redis_i][key] = @database[key]
       @database.delete key
       true

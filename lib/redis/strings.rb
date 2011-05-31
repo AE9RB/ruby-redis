@@ -7,30 +7,39 @@ class Redis
     
     def redis_GET key
       value = @database[key]
-      raise 'key contains invalid value type' if value and !value.respond_to?(:to_s)
+      found = [NilClass, String, Numeric].find { |klass| klass === value }
+      raise 'wrong kind' unless found
       value
     end
     
     def redis_SETRANGE key, offset, value
       data = (redis_GET(key)||'').to_s
-      offset = offset.to_redis_i
+      return data.size if value.empty?
+      offset = offset.to_redis_pos_i
+      raise 'maximum allowed size' if offset + value.size > 512*1024*1024
       if data.size <= offset
-        data += ' ' * (offset - data.size + value.size)
+        data.concat 0.chr * (offset - data.size + value.size)
       end
       data[offset,value.size] = value
+      @database[key] = data
+      data.size
     end
     
     def redis_GETRANGE key, first, last
-      redis_GET key[first.to_redis_i..last.to_redis_i]
+      first = first.to_redis_i
+      last = last.to_redis_i
+      value = redis_GET(key) || ''
+      first = 0 if first < -value.size
+      value[first..last]
     end
     
     def redis_GETBIT key, offset
       data = redis_GET key
       return 0 unless data
       data = data.to_s
-      offset = offset.to_redis_i
+      offset = offset.to_redis_pos_i
       byte = offset / 8
-      bit = 1 << offset % 8
+      bit = 0x80 >> offset % 8
       return 0 if data.size <= byte
       original_byte = data[byte].ord
       original_bit = original_byte & bit
@@ -39,9 +48,10 @@ class Redis
     
     def redis_SETBIT key, offset, value
       data = (redis_GET(key)||'').to_s
-      offset = offset.to_redis_i
+      offset = offset.to_redis_pos_i
+      raise 'out of range' if offset >= 4*1024*1024*1024
       byte = offset / 8
-      bit = 1 << offset % 8
+      bit = 0x80 >> offset % 8
       if data.size <= byte
         data += 0.chr * (byte - data.size + 1)
       end
@@ -52,7 +62,7 @@ class Redis
       elsif value == '1'
         data[byte] = (original_byte | bit).chr
       else
-        raise 'bad value'
+        raise 'out of range'
       end
       @database[key] = data
       original_bit != 0
@@ -89,21 +99,20 @@ class Redis
     end
     
     def redis_MSETNX *args
-      result = true
-      Hash[*args].each do |key, value|
-        result = false if @database.has_key? key
+      hash = Hash[*args]
+      hash.each do |key, value|
+        return false if @database.has_key? key
+      end
+      hash.each do |key, value|
         @database[key] = value
       end
-      result
+      true
     end
 
     def redis_SETNX key, value
-      if @database.has_key? key
-        false 
-      else
-        @database[key] = value
-        true
-      end
+      return false if @database.has_key? key
+      @database[key] = value
+      true
     end
     
     def redis_INCR key

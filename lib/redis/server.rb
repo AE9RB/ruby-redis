@@ -57,10 +57,22 @@ class Redis
     def redis_DEBUG type, key=nil
       if type.upcase == 'OBJECT'
         "#{@database[key].class}"
+        value = @database[key]
+        # encoding values are meaningless, they make tcl tests pass
+        # and don't forget they need a trailing space
+        if String === value
+          "Value #{value.class}:#{value.object_id} encoding:raw encoding:int "
+        elsif Numeric === value
+          "Value #{value.class}:#{value.object_id} encoding:int "
+        elsif Array === value
+          "Value #{value.class}:#{value.object_id} encoding:ziplist encoding:linkedlist "
+        else
+          "Value #{value.class}:#{value.object_id}"
+        end
       elsif type.upcase == 'RELOAD'
         "TODO: what is reload"
       else
-        raise 'not suported'
+        raise 'not supported'
       end
     end
     

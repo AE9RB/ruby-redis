@@ -29,7 +29,7 @@ class ::Numeric
 
   def to_redis_pos_i
     i = to_i
-    raise 'is negative' if i < 0
+    raise 'out of range because is negative' if i < 0
     i
   end
   
