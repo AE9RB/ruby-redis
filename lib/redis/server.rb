@@ -30,12 +30,9 @@ class Redis
     end
     
     def redis_AUTH password
-      if password == @options[:requirepass]
-        authorize
-        Response::OK
-      else
-        raise 'invalid password'
-      end
+      raise 'invalid password' unless password == @options[:requirepass]
+      authorize
+      Response::OK
     end
 
     def redis_SELECT db_index

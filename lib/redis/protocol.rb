@@ -32,7 +32,6 @@ class Redis
     def send_redis data
       # data = data.to_a.flatten(1) if Hash === data #TODO better
       if EventMachine::Deferrable === data
-        raise 'already deferred' if @deferred
         @deferred = data
       elsif nil == data
         send_data Response::NIL[0]
@@ -78,7 +77,7 @@ class Redis
     end
 
     def redis_QUIT
-      send_data Response::OK[0]
+      send_redis Response::OK
       close_connection_after_writing
       Response[]
     end
@@ -87,33 +86,40 @@ class Redis
       @multi = []
       Response::OK
     end
-    
+
     def redis_EXEC
-      @multi.each { |*strings| call_redis *strings }
+      send_data "*#{@multi.size}\r\n"
+      response = []
+      @multi.each do |strings| 
+        result = call_redis *strings
+        if EventMachine::Deferrable === result
+          result.unbind
+          send_redis nil
+        else
+          send_redis result
+        end
+      end
       @multi = nil
       Response[]
     end
     
     def call_redis command, *arguments
-      begin
-        send_redis send "redis_#{command.upcase}", *arguments
-      rescue Exception => e
-        # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-        # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
-        send_data "-ERR #{e.message}\r\n"
-      end
+      send "redis_#{command.upcase}", *arguments
+    rescue Exception => e
+      # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      Response["-ERR #{e.message}\r\n"]
     end
   
     # Process incoming redis protocol
     def receive_data data
       @buftok.extract(data) do |*strings|
         # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
-        if !@deferred and @multi and strings[0].upcase != 'DEBUG'
-          #TODO list of blocking and excluded commands like debug
+        if @multi and !%w{EXEC DEBUG}.include?(strings[0].upcase)
           @multi << strings
-          send_data Response::QUEUED[0]
+          send_redis Response::QUEUED
         else
-          call_redis *strings
+          send_redis call_redis *strings
         end
       end
     rescue Exception => e

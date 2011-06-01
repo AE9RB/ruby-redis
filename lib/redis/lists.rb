@@ -10,7 +10,7 @@ class Redis
       def initialize database, timeout_secs, *keys
         @database = database
         @keys = keys
-        timeout timeout_secs
+        timeout timeout_secs if timeout_secs > 0
         errback { unbind }
         callback { unbind }
         keys.each do |key|
@@ -40,7 +40,7 @@ class Redis
       timeout = args.pop.to_redis_pos_i
       args.each do |key|
         list = @database[key]
-        return list.pop if list and list.size > 0
+        return [key, list.pop] if list and list.size > 0
       end
       df = DeferredPop.new(@database, timeout, *args)
       df.errback { send_redis Response::NIL_MB }
@@ -52,7 +52,7 @@ class Redis
       timeout = args.pop.to_redis_pos_i
       args.each do |key|
         list = @database[key]
-        return list.shift if list and list.size > 0
+        return [key, list.shift] if list and list.size > 0
       end
       df = DeferredPop.new(@database, timeout, *args)
       df.errback { send_redis Response::NIL_MB }
@@ -71,31 +71,32 @@ class Redis
         end
       end
       raise 'wrong kind' unless !@database[destination] or Array === @database[destination]
-      timeout = timeout.to_redis_pos_i
-      df = EventMachine::DefaultDeferrable.new
-      df.timeout timeout if timeout > 0
+      df = DeferredPop.new @database, timeout.to_redis_pos_i, source
       df.errback {send_redis Response::NIL_MB}
       df.callback do |key, value|
-        (@database.lists_df[source] || []).delete_if{|e|e==df}
         redis_LPUSH destination, value
         send_redis value
       end
-      (@database.lists_df[source] ||= []).push df
       df
     end
     
     def redis_RPUSH key, value
       entry = @database[key] ||= []
       raise 'wrong kind' unless Array === entry
-      (@database.lists_df[key] ||= []).each { |x| x.succeed key, value; return 0 } 
+      (@database.lists_df[key] ||= []).each do |deferrable|
+        deferrable.succeed key, value
+        return 0
+      end
       entry.push(value).size
     end
 
     def redis_LPUSH key, value
       entry = @database[key] ||= []
-      # raise "#{key} #{value}" unless Array === entry
       raise 'wrong kind' unless Array === entry
-      (@database.lists_df[key] ||= []).each { |x| x.succeed key, value; return 0 } 
+      (@database.lists_df[key] ||= []).each do |deferrable|
+        deferrable.succeed key, value
+        return 0
+      end
       entry.unshift(value).size
     end
     

@@ -24,7 +24,10 @@ class Redis
     end
 
     def redis_EXISTS key
-      @database.has_key? key
+      return false unless @database.has_key? key
+      value = @database[key]
+      return false if Array === value and value.empty?
+      return true
     end
     
     def redis_EXPIRE key, seconds
