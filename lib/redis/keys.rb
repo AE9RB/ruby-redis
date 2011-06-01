@@ -22,12 +22,27 @@ class Redis
       end
       count
     end
+    
+    def redis_TYPE key
+      if String === @database[key]
+        'string'
+      elsif Numeric === @database[key]
+        'string'
+      elsif Array === @database[key]
+        'list'
+      elsif Set === @database[key]
+        'set'
+      elsif SortedSet === @database[key]
+        'zset'
+      elsif Hash === @database[key]
+        'hash'
+      else
+        'unknown'
+      end
+    end
 
     def redis_EXISTS key
-      return false unless @database.has_key? key
-      value = @database[key]
-      return false if Array === value and value.empty?
-      return true
+      @database.has_key? key
     end
     
     def redis_EXPIRE key, seconds

@@ -21,6 +21,7 @@ class Redis
       @buftok = BufferedTokenizer.new
       @multi = nil
       @deferred = nil
+      @quitting = false
       super
     end
     
@@ -32,6 +33,7 @@ class Redis
     def send_redis data
       # data = data.to_a.flatten(1) if Hash === data #TODO better
       if EventMachine::Deferrable === data
+        @deferred.unbind if @deferred
         @deferred = data
       elsif nil == data
         send_data Response::NIL[0]
@@ -78,6 +80,7 @@ class Redis
 
     def redis_QUIT
       send_redis Response::OK
+      @quitting = true
       close_connection_after_writing
       Response[]
     end
@@ -98,6 +101,7 @@ class Redis
         else
           send_redis result
         end
+        break if @quitting
       end
       @multi = nil
       Response[]
@@ -121,6 +125,7 @@ class Redis
         else
           send_redis call_redis *strings
         end
+        break if @quitting
       end
     rescue Exception => e
       @buftok.flush
