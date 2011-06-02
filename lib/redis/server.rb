@@ -5,6 +5,7 @@ require_relative 'keys'
 require_relative 'strings'
 require_relative 'lists'
 require_relative 'sets'
+require_relative 'hashes'
 
 require 'eventmachine'
 
@@ -26,6 +27,7 @@ class Redis
       extend Strings
       extend Lists
       extend Sets
+      extend Hashes
       @authorized = true
     end
     
@@ -63,6 +65,8 @@ class Redis
           "Value #{value.class}:#{value.object_id} encoding:int "
         elsif Array === value
           "Value #{value.class}:#{value.object_id} encoding:ziplist encoding:linkedlist "
+        elsif Hash === value
+          "Value #{value.class}:#{value.object_id} encoding:zipmap encoding:hashtable "
         else
           "Value #{value.class}:#{value.object_id}"
         end

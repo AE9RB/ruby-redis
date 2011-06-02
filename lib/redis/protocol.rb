@@ -31,7 +31,6 @@ class Redis
     
     # Companion to send_data.
     def send_redis data
-      # data = data.to_a.flatten(1) if Hash === data #TODO better
       if EventMachine::Deferrable === data
         @deferred.unbind if @deferred
         @deferred = data
@@ -50,6 +49,12 @@ class Redis
       elsif Response === data
         data.each do |item|
           send_data item
+        end
+      elsif Hash === data
+        send_data "*#{data.size * 2}\r\n"
+        data.each do |key, value|
+          send_redis key
+          send_redis value
         end
       elsif Array === data
         send_data "*#{data.size}\r\n"
