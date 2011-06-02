@@ -14,9 +14,9 @@ class Redis
 
     def redis_HSETNX key, field, value
       hash = @database[key] || {}
-      return 0 if hash.has_key? field
+      return false if hash.has_key? field
       redis_HSET key, field, value
-      return 1
+      return true
     end
     
     def redis_HKEYS key

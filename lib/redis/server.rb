@@ -67,6 +67,8 @@ class Redis
           "Value #{value.class}:#{value.object_id} encoding:ziplist encoding:linkedlist "
         elsif Hash === value
           "Value #{value.class}:#{value.object_id} encoding:zipmap encoding:hashtable "
+        elsif Set === value
+          "Value #{value.class}:#{value.object_id} encoding:intset encoding:hashtable "
         else
           "Value #{value.class}:#{value.object_id}"
         end

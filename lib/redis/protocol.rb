@@ -56,7 +56,7 @@ class Redis
           send_redis key
           send_redis value
         end
-      elsif Array === data
+      elsif Array === data or Set === data
         send_data "*#{data.size}\r\n"
         data.each do |item|
           if String === item
