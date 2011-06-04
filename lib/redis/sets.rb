@@ -94,8 +94,3 @@ class Redis
     
   end
 end
-
-if __FILE__ == $0
-require_relative 'test'
-
-end

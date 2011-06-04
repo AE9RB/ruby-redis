@@ -7,6 +7,8 @@ class Redis
     class DeferredPop
       include EventMachine::Deferrable
       
+      attr_reader :bound
+      
       def initialize database, timeout_secs, *keys
         @database = database
         @keys = keys
@@ -14,23 +16,22 @@ class Redis
         errback { unbind }
         callback { unbind }
         keys.each do |key|
-          (@database.lists_df[key] ||= []).push self
+          (@database.blocked_pops[key] ||= []).push self
         end
+        @bound = true
       end
       
       def unbind
+        return unless @bound
         @keys.each do |key|
-          key_df_list = @database.lists_df[key]
+          key_df_list = @database.blocked_pops[key]
           next unless key_df_list
           key_df_list.delete_if { |e| e == self }
         end
+        @bound = false
       end
       
     end
-    
-    #TODO The redis tests require a specific error so we can't
-    # let Ruby do the error handling.  Make better tests so we
-    # kill the rampant raise 'wrong kind' ...
     
     def redis_LRANGE key, first, last
       first = first.to_redis_i
@@ -76,6 +77,10 @@ class Redis
       df
     end
 
+    #TODO The redis tests require a specific error so we can't
+    # let Ruby do the error handling.  Make better tests so we
+    # kill the rampant raise 'wrong kind' ...
+    
     def redis_RPOPLPUSH source, destination
       source_list = @database[source]
       return nil unless source_list
@@ -109,7 +114,7 @@ class Redis
     def redis_RPUSH key, value
       list = @database[key]
       raise 'wrong kind' unless !list or Array === list
-      (@database.lists_df[key] ||= []).each do |deferrable|
+      (@database.blocked_pops[key] ||= []).each do |deferrable|
         deferrable.succeed key, value
         return 0
       end
@@ -120,7 +125,7 @@ class Redis
     def redis_LPUSH key, value
       list = @database[key]
       raise 'wrong kind' unless !list or Array === list
-      (@database.lists_df[key] ||= []).each do |deferrable|
+      (@database.blocked_pops[key] ||= []).each do |deferrable|
         deferrable.succeed key, value
         return 0
       end
@@ -222,9 +227,4 @@ class Redis
     end
       
   end
-end
-
-if __FILE__ == $0
-require_relative 'test'
-
 end

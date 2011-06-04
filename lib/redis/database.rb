@@ -4,12 +4,12 @@ class Redis
     # Redis databases are volatile dictionaries.
     
     # Used by lists to defer blocking pops
-    attr_reader :lists_df
+    attr_reader :blocked_pops
     
     def initialize
       @dict = {}
       @expiry = {}
-      @lists_df = {}
+      @blocked_pops = {} #TODO rename blocked_pops
     end
     
     def expire key, seconds

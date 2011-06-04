@@ -5,6 +5,7 @@ require_relative 'keys'
 require_relative 'strings'
 require_relative 'lists'
 require_relative 'sets'
+require_relative 'zsets'
 require_relative 'hashes'
 
 require 'eventmachine'
@@ -27,6 +28,7 @@ class Redis
       extend Strings
       extend Lists
       extend Sets
+      extend ZSets
       extend Hashes
       @authorized = true
     end
@@ -92,10 +94,4 @@ class Redis
     end
     
   end
-end
-
-
-if __FILE__ == $0
-require_relative 'test'
-
 end

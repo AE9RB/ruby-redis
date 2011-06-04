@@ -59,7 +59,12 @@ class Redis
       elsif Array === data or Set === data
         send_data "*#{data.size}\r\n"
         data.each do |item|
-          if String === item
+          if Numeric === item
+            send_data ":%g\r\n" % item
+            int_item = item.to_i
+            item = int_item if item == int_item
+            send_data ":#{item}\r\n"
+          elsif String === item
             send_data "$#{item.size}\r\n"
             send_data item
             send_data "\r\n"
@@ -138,10 +143,4 @@ class Redis
     end
 
   end
-end
-
-if __FILE__ == $0
-require_relative 'test'
-
-
 end
