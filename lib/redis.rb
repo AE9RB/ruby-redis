@@ -11,8 +11,21 @@ class Redis
 end
 
 class ::String
+
+  def to_redis_f
+    self_upcase = self.upcase
+    if self_upcase == '+INF'
+      1.0/0
+    elsif self_upcase == '-INF'
+      -1.0/0
+    else
+      raise "#{self.to_s} not a double" unless self =~ /^[ +]?[0-9.e-]*$/
+      to_f
+    end
+  end
+  
   def to_redis_i
-    raise 'not an integer' unless self =~ /^-?[0-9]*$/
+    raise 'not an integer' unless self =~ /^[ +-]?[0-9]*$/
     to_i
   end
 
@@ -23,6 +36,11 @@ class ::String
 end
 
 class ::Numeric
+
+  def to_redis_f
+    self
+  end
+
   def to_redis_i
     to_i
   end

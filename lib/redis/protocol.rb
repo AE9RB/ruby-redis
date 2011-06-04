@@ -41,6 +41,8 @@ class Redis
       elsif true == data
         send_data Response::TRUE[0]
       elsif Numeric === data
+        int_data = data.to_i
+        data = int_data if data == int_data
         send_data ":#{data}\r\n"
       elsif String === data
         send_data "$#{data.size}\r\n"
@@ -60,7 +62,6 @@ class Redis
         send_data "*#{data.size}\r\n"
         data.each do |item|
           if Numeric === item
-            send_data ":%g\r\n" % item
             int_item = item.to_i
             item = int_item if item == int_item
             send_data ":#{item}\r\n"
@@ -120,8 +121,8 @@ class Redis
     def call_redis command, *arguments
       send "redis_#{command.upcase}", *arguments
     rescue Exception => e
-      # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+      e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       Response["-ERR #{e.message}\r\n"]
     end
   
