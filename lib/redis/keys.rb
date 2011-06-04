@@ -32,7 +32,7 @@ class Redis
         'list'
       elsif Set === @database[key]
         'set'
-      elsif SortedSet === @database[key]
+      elsif ZSet === @database[key]
         'zset'
       elsif Hash === @database[key]
         'hash'

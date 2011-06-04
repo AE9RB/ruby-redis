@@ -13,13 +13,13 @@ end
 class ::String
 
   def to_redis_f
-    self_upcase = self.upcase
-    if self_upcase == '+INF'
+    self_downcase = self.downcase
+    if self_downcase == '+inf'
       1.0/0
-    elsif self_upcase == '-INF'
+    elsif self_downcase == '-inf'
       -1.0/0
     else
-      raise "#{self.to_s} not a double" unless self =~ /^[ +]?[0-9.e-]*$/
+      raise "weight value is not a double" unless self =~ /^[ +]?[0-9.e-]*$/
       to_f
     end
   end

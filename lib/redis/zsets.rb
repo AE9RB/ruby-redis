@@ -1,13 +1,15 @@
-require 'set'
-
 class Redis
   
-  #TODO add and delete should work on @keys instead of clearing
-  class ZSet < Set
-    def initialize(*args, &block)
+  #WARN Time complexity may not match C version in this module yet.
+  #TODO Should add and delete manipulate @keys instead of clearing?
+  
+  class ZSet
+    include Enumerable
+
+    def initialize
+      @hash = Hash.new
 	    @keys = nil
 	    @keys_reverse = nil
-	    super
 	  end
 	  
 	  def add(o, s = 0.0)
@@ -16,7 +18,6 @@ class Redis
 	    @keys_reverse = nil
       self
     end
-	  alias << add
 
 	  def delete(o)
 	    @keys = nil
@@ -25,11 +26,45 @@ class Redis
 	    self
 	  end
 	  
+	  def include?(o)
+      @hash.include?(o)
+    end
+	  
 	  def score(o)
 	    @hash[o]
     end
     
-    def range reverse, start ,stop, withscores
+    def size
+      @hash.size
+    end
+    
+    def empty?
+      @hash.empty?
+    end
+    
+	  def each
+	    block_given? or return enum_for(__method__)
+	    to_a.each { |o| yield(o) }
+	    self
+	  end
+
+	  def to_a
+	    unless @keys
+  	    (@keys = @hash.to_a).sort! do |a, b|
+  	      a.reverse <=> b.reverse
+	      end
+	    end
+	    @keys
+	  end
+	  
+	  def to_a_reverse
+	    unless @keys_reverse
+	      @keys_reverse = to_a.reverse
+      end
+	    @keys_reverse
+    end
+
+    def range reverse, start ,stop, withscores = false
       array = reverse ? to_a_reverse : to_a
       start = start.to_redis_i
       stop = stop.to_redis_i
@@ -84,62 +119,57 @@ class Redis
       end
       result
     end
-
-	  def clear
-	    @keys = nil
-	    @keys_reverse = nil
-	    super
-	  end
-
-	  def replace(enum)
-	    @keys = nil
-	    @keys_reverse = nil
-	    super
-	  end
-
-	  def delete_if
-      block_given? or return enum_for(__method__)
-	    n = @hash.size
-	    super
-	    @keys_reverse = @keys = nil if @hash.size != n
-	    self
-	  end
-
-	  def keep_if
-	    block_given? or return enum_for(__method__)
-	    n = @hash.size
-	    super
-	    @keys_reverse = @keys = nil if @hash.size != n
-	    self
-	  end
-
-	  def merge(enum)
-	    @keys = nil
-	    @keys_reverse = nil
-	    super
-	  end
-
-	  def each
-	    block_given? or return enum_for(__method__)
-	    to_a.each { |o| yield(o) }
-	    self
-	  end
-
-	  def to_a
-	    unless @keys
-  	    (@keys = @hash.to_a).sort! do |a, b|
-  	      a.reverse <=> b.reverse
-	      end
-	    end
-	    @keys
-	  end
-	  
-	  def to_a_reverse
-	    unless @keys_reverse
-	      @keys_reverse = to_a.reverse
+    
+    def self.aggregate database, is_and, destination, numkeys, *args
+      numkeys = numkeys.to_i
+      aggregate = 'SUM'
+      keys = []
+      keys << args.shift while (numkeys -= 1) >= 0
+      weights = Array.new keys.size, 1
+      until args.empty?
+        case args.shift.upcase
+        when 'WEIGHTS'
+          weights = []
+          keys.size.times {weights << args.shift.to_redis_f}
+        when 'AGGREGATE'
+          aggregate = args.shift.upcase
+        else
+          raise 'bad arguments'
+        end
       end
-	    @keys_reverse
+      results = []
+      keys.zip(weights) do |key, weight|
+        inner_result = ZSet.new
+        record = database[key] || ZSet.new
+        record.each do |member, score|
+          inner_result.add member, (score||1) * weight
+        end
+        results << inner_result
+      end
+      result = results.reduce do |memo, result|
+        n = is_and ? new : memo
+        result.each do |member, score|
+          next if is_and and !memo.include?(member)
+          test = [score, memo.score(member)].compact
+          text << 0 if test.empty?
+          case aggregate
+          when 'SUM'
+            score = test.reduce :+
+          when 'MIN'
+            score = test.min
+          when 'MAX'
+            score = test.max
+          else
+            raise 'bad arguments'
+          end
+          n.add member, score 
+        end
+        n
+      end
+      database[destination] = result unless result.empty?
+      result.size
     end
+    
   end
   
   module ZSets
@@ -159,6 +189,7 @@ class Redis
       else
         score = increment
       end
+      raise 'NaN' if score.nan?
       record.add member, score
       score
     end
@@ -189,9 +220,18 @@ class Redis
       (@database[key] || []).size
     end
     
+    def redis_ZREMRANGEBYSCORE key, min, max
+      record = @database[key] || ZSet.new
+      range = record.range_by_score(false, min, max)
+      range.each do |member, score|
+        record.delete member
+      end
+      range.size
+    end
+    
     def redis_ZCOUNT key, min, max
       record = @database[key] || ZSet.new
-      record.range_by_score(true, max, min).size
+      record.range_by_score(false, min, max).size
     end
 
     def redis_ZREVRANGEBYSCORE key, min, max, *args
@@ -212,6 +252,23 @@ class Redis
     def redis_ZREVRANGE key, start ,stop, withscores = false
       record = @database[key] || ZSet.new
       record.range true, start ,stop, withscores
+    end
+
+    def redis_ZREMRANGEBYRANK key, start, stop
+      record = @database[key] || ZSet.new
+      range = record.range false, start ,stop
+      range.each do |member, score|
+        record.delete member
+      end
+      range.size
+    end
+    
+    def redis_ZUNIONSTORE destination, numkeys, *args
+      ZSet.aggregate @database, false, destination, numkeys, *args      
+    end
+
+    def redis_ZINTERSTORE destination, numkeys, *args
+      ZSet.aggregate @database, true, destination, numkeys, *args      
     end
     
   end
