@@ -3,23 +3,32 @@ class Redis
     
     # Redis databases are volatile dictionaries.
     
-    # Used by lists to defer blocking pops
-    attr_reader :blocked_pops
+    attr_reader :blocked_pops, :watchers
     
     def initialize
       @dict = {}
       @expiry = {}
-      @blocked_pops = {} #TODO rename blocked_pops
+      @blocked_pops = {}
+      @watchers = {}
+    end
+    
+    #TOSO touch
+    def touch key
+      (@watchers[key]||[]).each do |watcher|
+        watcher.succeed self, key
+      end
     end
     
     def expire key, seconds
       return false unless @dict.has_key? key
+      touch key
       @expiry[key] = Time.now + seconds
       return true
     end
 
     def expire_at key, unixtime
       return false unless @dict.has_key? key
+      touch key
       @expiry[key] = Time.at unixtime
       return true
     end
@@ -33,6 +42,7 @@ class Redis
     
     def persist key
       result = @expiry.has_key? key
+      touch key if result
       @expiry.delete key
       result
     end
@@ -47,6 +57,7 @@ class Redis
     end
 
     def []= key, value
+      touch key
       @expiry.delete key
       @dict[key] = value
     end
@@ -57,6 +68,7 @@ class Redis
     end
     
     def delete key
+      touch key
       @dict.delete key
       @expiry.delete key
     end
@@ -70,6 +82,8 @@ class Redis
     end
     
     def clear
+      # We don't trigger watchers of unset records
+      @dict.each_key { |key| touch key }
       @dict.clear
       @expiry.clear
     end

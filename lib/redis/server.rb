@@ -6,6 +6,13 @@ class Redis
       @database.clear
       Response::OK
     end
+
+    def redis_FLUSHALL
+      Redis.databases.each do |database|
+        database.clear
+      end
+      Response::OK
+    end
     
     def redis_DBSIZE
       @database.size
