@@ -120,11 +120,19 @@ class Redis
     end
     
     def redis_EXPIRE key, seconds
-      @database.expire key, seconds.to_redis_i
+      @database.expire key, seconds.to_redis_pos_i
     end
 
     def redis_EXPIREAT key, timestamp
-      @database.expire_at key, timestamp.to_redis_i
+      @database.expire_at key, timestamp.to_redis_pos_i
+    end
+    
+    def redis_PERSIST key
+      @database.persist key
+    end
+
+    def redis_TTL key
+      @database.ttl key
     end
     
     def redis_RENAME key, newkey

@@ -17,6 +17,7 @@ class Redis
   
   module Protocol
 
+    # Typically raised by redis_QUIT
     class CloseConnection < Exception
     end
   
@@ -90,7 +91,13 @@ class Redis
     end
 
     def redis_MULTI
+      raise 'MULTI nesting not allowed' if @multi
       @multi = []
+      Response::OK
+    end
+    
+    def redis_DISCARD
+      @multi = nil
       Response::OK
     end
 
@@ -123,7 +130,7 @@ class Redis
     def receive_data data
       @buftok.extract(data) do |*strings|
         # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
-        if @multi and !%w{EXEC DEBUG}.include?(strings[0].upcase)
+        if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
           @multi << strings
           send_redis Response::QUEUED
         else

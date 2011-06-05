@@ -26,6 +26,7 @@ class Redis
       return false unless source_record.include? member
       (@database[destination] ||= Set.new).add member
       source_record.delete member
+      @database.delete source if source_record.empty?
       return true
     end
       
@@ -78,11 +79,12 @@ class Redis
     end
     
     def redis_SPOP key
-      set = (@database[key] || [])
-      return nil if set.empty?
+      set = @database[key]
+      return nil unless set
       rec = rand set.size
       result = set.to_a[rec]
       set.delete result
+      @database.delete key if set.empty?
       result
     end
     

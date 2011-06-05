@@ -20,8 +20,21 @@ class Redis
 
     def expire_at key, unixtime
       return false unless @dict.has_key? key
-      @expiry[key] = unixtime
+      @expiry[key] = Time.at unixtime
       return true
+    end
+    
+    def ttl key
+      check_expiry key
+      time = @expiry[key]
+      return -1 unless time
+      (time - Time.now).round
+    end
+    
+    def persist key
+      result = @expiry.has_key? key
+      @expiry.delete key
+      result
     end
     
     def random_key

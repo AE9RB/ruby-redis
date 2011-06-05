@@ -12,6 +12,12 @@ class Redis
       value
     end
     
+    def redis_APPEND key, value
+      new_value = redis_GET(key).to_s + value
+      @database[key] = new_value
+      new_value.size
+    end
+    
     def redis_SETRANGE key, offset, value
       data = (redis_GET(key)||'').to_s
       return data.size if value.empty?
@@ -88,6 +94,12 @@ class Redis
     
     def redis_SET key, value
       @database[key] = value
+      Response::OK
+    end
+
+    def redis_SETEX key, seconds, value
+      @database[key] = value
+      @database.expire key, seconds.to_redis_pos_i
       Response::OK
     end
     
