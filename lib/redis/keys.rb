@@ -14,6 +14,80 @@ class Redis
       end
     end
     
+    def redis_SORT key, *args
+      record = @database[key] || []
+      sort = 'ASC'
+      gets = []
+      alpha = false
+      by = by_hash = offset = count = store = nil
+      until args.empty?
+        arg = args.shift
+        case arg.upcase
+        when 'LIMIT'
+          offset = args.shift.to_i
+          count = args.shift.to_i
+        when 'ASC'
+          sort = 'ASC'
+        when 'DESC'
+          sort = 'DESC'
+        when 'ALPHA'
+          alpha = true
+        when 'STORE'
+          store = args.shift
+        when 'GET'
+          gets << args.shift
+        when 'BY'
+          by, by_hash = args.shift.split '->', 2
+        else
+          raise "#{arg} bad argument"
+        end
+      end
+      result = record.sort do |a, b|
+        if by
+          a = @database[by.sub /\*/, a]
+          a = a[by_hash] if by_hash
+          b = @database[by.sub /\*/, b]
+          b = b[by_hash] if by_hash
+        end
+        if alpha
+          a = a.to_s
+          b = b.to_s
+        else
+          a = a.to_f
+          b = b.to_f
+        end
+        if sort == 'DESC'
+          b <=> a
+        else
+          a <=> b
+        end
+      end
+      unless gets.empty?
+        original = result
+        result = []
+        original.each do |r|
+          gets.each do |g|
+            get, get_hash = g.split('->', 2)
+            r = @database[get.sub /\*/, r] unless get == '#'
+            r = r[get_hash] if get_hash
+            result << r
+          end
+        end
+      end
+      if count and offset
+        result = result[offset,count]
+      elsif count
+        result = result[0,count]
+      elsif offset
+        result = result[offset..-1]
+      end
+      if Array === result[0]
+        result = result.collect {|r| r.first}
+      end
+      @database[store] = result if store
+      result
+    end
+    
     def redis_DEL *keys
       count = 0
       keys.each do |key|
