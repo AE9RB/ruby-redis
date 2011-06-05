@@ -1,50 +1,6 @@
-require_relative '../redis'
-require_relative 'config'
-require_relative 'protocol'
-require_relative 'keys'
-require_relative 'strings'
-require_relative 'lists'
-require_relative 'sets'
-require_relative 'zsets'
-require_relative 'hashes'
-
-require 'eventmachine'
-
 class Redis
-  class Server < EventMachine::Connection
-    
-    include Protocol
-    
-    def initialize options=nil
-      @options = options || Config.new
-      @database = Redis.databases[0]
-      authorize unless options[:requirepass]
-      super()
-    end
-    
-    def authorize
-      return if @authorized
-      extend Keys
-      extend Strings
-      extend Lists
-      extend Sets
-      extend ZSets
-      extend Hashes
-      @authorized = true
-    end
-    
-    def redis_AUTH password
-      raise 'invalid password' unless password == @options[:requirepass]
-      authorize
-      Response::OK
-    end
-
-    def redis_SELECT db_index
-      database = Redis.databases[db_index.to_redis_i]
-      raise 'index out of range' unless database
-      @database = database
-      Response::OK
-    end
+  
+  module Server
     
     def redis_FLUSHDB
       @database.clear

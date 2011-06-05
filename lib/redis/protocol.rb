@@ -16,12 +16,14 @@ class Redis
   end
   
   module Protocol
+
+    class CloseConnection < Exception
+    end
   
     def initialize *args
       @buftok = BufferedTokenizer.new
       @multi = nil
       @deferred = nil
-      @quitting = false
       super
     end
     
@@ -87,24 +89,6 @@ class Redis
       end
     end
 
-    # Redis commands are methods on the connection object.
-    # Most commands aren't mixed in until after authentication.
-    
-    def redis_PING
-      Response::PONG
-    end
-
-    def redis_ECHO str
-      str
-    end
-
-    def redis_QUIT
-      send_redis Response::OK
-      @quitting = true
-      close_connection_after_writing
-      Response[]
-    end
-    
     def redis_MULTI
       @multi = []
       Response::OK
@@ -121,7 +105,6 @@ class Redis
         else
           send_redis result
         end
-        break if @quitting
       end
       @multi = nil
       Response[]
@@ -130,6 +113,7 @@ class Redis
     def call_redis command, *arguments
       send "redis_#{command.upcase}", *arguments
     rescue Exception => e
+      raise e if CloseConnection === e
       # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
       # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       Response["-ERR #{e.message}\r\n"]
@@ -145,11 +129,14 @@ class Redis
         else
           send_redis call_redis *strings
         end
-        break if @quitting
       end
     rescue Exception => e
       @buftok.flush
-      send_data "-ERR #{e.message}\r\n"
+      if CloseConnection === e
+        close_connection_after_writing
+      else
+        send_data "-ERR #{e.message}\r\n" 
+      end
     end
 
   end
