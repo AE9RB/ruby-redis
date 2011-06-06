@@ -88,13 +88,13 @@ class Redis
       end
       result = []
       min_exclusive = false
-      if min[0] == '('
+      if min[0..0] == '('
         min_exclusive = true
         min = min[1..-1]
       end
       min = min.to_redis_f
       max_exclusive = false
-      if max[0] == '('
+      if max[0..0] == '('
         max_exclusive = true
         max = max[1..-1]
       end

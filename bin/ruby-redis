@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 # Attempt support for Ruby older than 1.9
+require 'rubygems'
 unless Kernel.respond_to?(:require_relative)
   module Kernel
     def require_relative(path)
@@ -8,6 +9,7 @@ unless Kernel.respond_to?(:require_relative)
     end
   end
 end
+
 
 if File.exist? File.expand_path '../../lib/redis/server.rb', __FILE__
   # Prefer local version (development or /usr/local deployments)

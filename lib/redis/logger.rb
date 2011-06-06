@@ -9,7 +9,7 @@ class Redis
   def self.logger(logdev = nil, *opts)
     @@logger = nil if logdev
     @@logger ||= lambda {
-      logger = Logger.new (logdev||STDOUT), *opts
+      logger = Logger.new(logdev||STDOUT), *opts
       logger
     }.call
   end

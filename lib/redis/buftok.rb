@@ -55,7 +55,7 @@ class Redis
         else
           line = gets
           break unless line
-          case line[0]
+          case line[0..0]
           when '*'
             @remaining = line[1..-1].to_i
             if @remaining > 1024*1024
@@ -67,7 +67,7 @@ class Redis
             if @binary_size == -1
               @binary_size = nil
               yield nil
-            elsif (@binary_size == 0 and line[1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
+            elsif (@binary_size == 0 and line[1..1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
               @binary_size = nil
               raise "Protocol error: invalid bulk length"
             end
