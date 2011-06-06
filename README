@@ -1,6 +1,9 @@
 Tests from redis 2.2.8 are running.  Run test.rb.
-Passing: printver auth protocol basic list set zset hash sort expire cas quit
 
+Passing tests: printver auth protocol basic list set
+               zset hash sort expire cas quit pubsub
+         
+The only significant work that remains is saving and loading.
 
 Benchmark parameters:
 EC2 ami-2a1fec43 on c1.medium

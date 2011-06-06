@@ -72,7 +72,7 @@ class Redis
     # Companion to send_data.
     def send_redis data
       if EventMachine::Deferrable === data
-        @deferred.unbind if @deferred
+        @deferred.unbind if @deferred and @deferred != data
         @deferred = data
       elsif nil == data
         send_data Response::NIL[0]

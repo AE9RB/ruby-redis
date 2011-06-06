@@ -8,6 +8,7 @@ require_relative 'lists'
 require_relative 'sets'
 require_relative 'zsets'
 require_relative 'hashes'
+require_relative 'pubsub'
 
 require 'eventmachine'
 
@@ -32,6 +33,7 @@ class Redis
       extend Sets
       extend ZSets
       extend Hashes
+      extend PubSub
       @authorized = true
     end
     
