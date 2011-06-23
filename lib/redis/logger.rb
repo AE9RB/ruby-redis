@@ -8,10 +8,7 @@ class Redis
   # Redis.logger config[:logfile] unless config[:logfile] == 'stdout'
   def self.logger(logdev = nil, *opts)
     @@logger = nil if logdev
-    @@logger ||= lambda {
-      logger = Logger.new(logdev||STDOUT), *opts
-      logger
-    }.call
+    @@logger ||= Logger.new(logdev||STDOUT, *opts)
   end
   
   # Redis levels are: DEBUG < INFO < NOTICE < WARNING

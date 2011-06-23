@@ -2,7 +2,7 @@ require_relative 'redis/database'
 
 class Redis
   
-  VERSION = '0.0.0.pre'
+  VERSION = '0.0.1.dev'
   
   def self.databases
     @@databases ||= [Database.new]
@@ -53,8 +53,3 @@ class ::Numeric
   
 end
 
-
-if __FILE__ == $0
-require_relative 'test'
-
-end
