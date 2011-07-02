@@ -1,4 +1,9 @@
 class Redis
+
+  def self.databases
+    @@databases ||= [Database.new]
+  end
+    
   class Database
     
     # Redis databases are volatile dictionaries.
@@ -12,7 +17,6 @@ class Redis
       @watchers = {}
     end
     
-    #TOSO touch
     def touch key
       (@watchers[key]||[]).each do |watcher|
         watcher.succeed self, key

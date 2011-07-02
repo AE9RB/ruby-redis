@@ -60,7 +60,7 @@ class Redis
             @remaining = line[1..-1].to_i
             if @remaining > 1024*1024
               @remaining = 0
-              raise "Protocol error: invalid multibulk length"
+              raise 'invalid multibulk length'
             end
           when '$'
             @binary_size = line[1..-1].to_i
@@ -69,7 +69,7 @@ class Redis
               yield nil
             elsif (@binary_size == 0 and line[1..1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
               @binary_size = nil
-              raise "Protocol error: invalid bulk length"
+              raise 'invalid bulk length'
             end
           else
             raise "expected '$', got '#{line[0]}'" if @remaining > 0

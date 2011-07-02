@@ -1,8 +1,5 @@
 # -*- encoding: utf-8 -*-
-lib = File.expand_path('../lib/', __FILE__)
-$:.unshift lib unless $:.include?(lib)
- 
-require 'redis'
+require File.expand_path '../lib/redis/version', __FILE__
  
 Gem::Specification.new do |s|
   s.name        = 'ruby-redis'

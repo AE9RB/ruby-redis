@@ -197,10 +197,11 @@ start_server {
         r del blist target1 target2
         r set target1 nolist
         $rd1 brpoplpush blist target1 0
+        assert_error "ERR*wrong kind*" {$rd1 read}
+          #########! buffer glitch
         $rd2 brpoplpush blist target2 0
         r lpush blist foo
 
-        assert_error "ERR*wrong kind*" {$rd1 read}
         assert_equal {foo} [$rd2 read]
         assert_equal {foo} [r lrange target2 0 -1]
     }

@@ -1,5 +1,4 @@
-require_relative '../redis'
-require_relative 'config'
+require_relative 'database'
 require_relative 'protocol'
 require_relative 'server'
 require_relative 'keys'
@@ -9,18 +8,20 @@ require_relative 'sets'
 require_relative 'zsets'
 require_relative 'hashes'
 require_relative 'pubsub'
+require_relative 'strict'
 
 require 'eventmachine'
 
 class Redis
   class Connection < EventMachine::Connection
     
+    include NotStrict
     include Protocol
     
-    def initialize options=nil
-      @options = options || Config.new
+    def initialize password=nil
+      @password = password
       @database = Redis.databases[0]
-      authorize unless options[:requirepass]
+      authorize unless @password
       super()
     end
     
@@ -38,7 +39,7 @@ class Redis
     end
     
     def redis_AUTH password
-      raise 'invalid password' unless password == @options[:requirepass]
+      raise 'invalid password' unless password == @password
       authorize
       Response::OK
     end

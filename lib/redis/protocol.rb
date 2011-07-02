@@ -7,13 +7,13 @@ class Redis
   #  Response["+#{data}\n\r"]
   #  Response::OK
   class Response < Array
-    OK = self["+OK\r\n"]
-    PONG = self["+PONG\r\n"]
-    NIL = self["$-1\r\n"]
-    NIL_MB = self["*-1\r\n"]
-    FALSE = self[":0\r\n"]
-    TRUE = self[":1\r\n"]
-    QUEUED = self["+QUEUED\r\n"]
+    OK = self["+OK\r\n".freeze].freeze
+    PONG = self["+PONG\r\n".freeze].freeze
+    NIL = self["$-1\r\n".freeze].freeze
+    NIL_MB = self["*-1\r\n".freeze].freeze
+    FALSE = self[":0\r\n".freeze].freeze
+    TRUE = self[":1\r\n".freeze].freeze
+    QUEUED = self["+QUEUED\r\n".freeze].freeze
   end
 
   class Watcher
@@ -202,7 +202,7 @@ class Redis
       if CloseConnection === e
         close_connection_after_writing
       else
-        send_data "-ERR #{e.message}\r\n" 
+        send_data "-ERR Protocol error: #{e.message}\r\n" 
       end
     end
 
