@@ -1,4 +1,4 @@
-#TODO
+require File.join(File.dirname(__FILE__), '../redis')
 
 class Redis
   

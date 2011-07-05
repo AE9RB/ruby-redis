@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-require File.expand_path '../lib/redis/version', __FILE__
+require File.join(File.dirname(__FILE__), 'lib/redis/version')
  
 Gem::Specification.new do |s|
   s.name        = 'ruby-redis'

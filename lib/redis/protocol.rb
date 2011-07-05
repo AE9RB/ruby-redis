@@ -1,18 +1,18 @@
+require File.join(File.dirname(__FILE__), '../redis')
 require 'eventmachine'
 require_relative 'buftok'
+require_relative 'send'
 
 class Redis
   
   # Use to respond with raw protocol
-  #  Response["+#{data}\n\r"]
+  #  Response["+",data,"\n\r"]
   #  Response::OK
+  #  Response[]
   class Response < Array
     OK = self["+OK\r\n".freeze].freeze
     PONG = self["+PONG\r\n".freeze].freeze
-    NIL = self["$-1\r\n".freeze].freeze
     NIL_MB = self["*-1\r\n".freeze].freeze
-    FALSE = self[":0\r\n".freeze].freeze
-    TRUE = self[":1\r\n".freeze].freeze
     QUEUED = self["+QUEUED\r\n".freeze].freeze
   end
 
@@ -51,6 +51,8 @@ class Redis
   end
   
   module Protocol
+    
+    include Send
 
     # Typically raised by redis_QUIT
     class CloseConnection < Exception
@@ -74,56 +76,12 @@ class Redis
       if EventMachine::Deferrable === data
         @deferred.unbind if @deferred and @deferred != data
         @deferred = data
-      elsif nil == data
-        send_data Response::NIL[0]
-      elsif false == data
-        send_data Response::FALSE[0]
-      elsif true == data
-        send_data Response::TRUE[0]
-      elsif Numeric === data
-        data = data.to_f
-        if data.nan?
-          send_data ":0\r\n"
-        elsif !data.infinite?
-          int_data = data.to_i
-          data = int_data if data == int_data
-          send_data ":#{data}\r\n"
-        elsif data.infinite? > 0
-          send_data ":inf\r\n"
-        elsif data.infinite? < 0
-          send_data ":-inf\r\n"
-        end
-      elsif String === data
-        send_data "$#{data.size}\r\n"
-        send_data data
-        send_data "\r\n"
       elsif Response === data
         data.each do |item|
           send_data item
         end
-      elsif Hash === data
-        send_data "*#{data.size * 2}\r\n"
-        data.each do |key, value|
-          send_redis key
-          send_redis value
-        end
-      elsif Array === data or Set === data
-        send_data "*#{data.size}\r\n"
-        data.each do |item|
-          if Numeric === item
-            int_item = item.to_i
-            item = int_item if item == int_item
-            send_data ":#{item}\r\n"
-          elsif String === item
-            send_data "$#{item.size}\r\n"
-            send_data item
-            send_data "\r\n"
-          else
-            send_data Response::NIL[0]
-          end
-        end
       else
-        raise "#{data.class} is not a redis type"
+        super
       end
     end
     
@@ -198,7 +156,6 @@ class Redis
         end
       end
     rescue Exception => e
-      @buftok.flush
       if CloseConnection === e
         close_connection_after_writing
       else

@@ -1,3 +1,5 @@
+require File.join(File.dirname(__FILE__), '../redis')
+
 class Redis
   
   #WARN Time complexity may not match C version in this module yet.

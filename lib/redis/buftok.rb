@@ -1,4 +1,7 @@
+require File.join(File.dirname(__FILE__), '../redis')
+
 class Redis
+  
   class BufferedTokenizer < Array
     
     # Minimize the amount of memory copying.
@@ -9,11 +12,7 @@ class Redis
     
     def initialize
       super()
-      @split = nil
-      @pending = nil
-      @binary_size = nil
-      @remaining = 0
-      @elements = []
+      flush
     end
     
     def extract data  
@@ -30,13 +29,16 @@ class Redis
       end
     end
     
+    private
+    
     def flush
       @split = nil
+      @pending = nil
+      @binary_size = nil
+      @remaining = 0
+      @elements = []
       clear
-      nil
     end
-    
-    private
     
     # The primary performance trick is to String#split and work with that.
     def unshift_split
@@ -56,10 +58,16 @@ class Redis
           line = gets
           break unless line
           case line[0..0]
+          when '-'
+            yield RuntimeError.new line[1..-1]
+          when '+'
+            yield line[1..-1]
+          when ':'
+            yield line[1..-1].to_i
           when '*'
             @remaining = line[1..-1].to_i
             if @remaining > 1024*1024
-              @remaining = 0
+              flush
               raise 'invalid multibulk length'
             end
           when '$'
@@ -68,11 +76,14 @@ class Redis
               @binary_size = nil
               yield nil
             elsif (@binary_size == 0 and line[1..1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
-              @binary_size = nil
+              flush
               raise 'invalid bulk length'
             end
           else
-            raise "expected '$', got '#{line[0]}'" if @remaining > 0
+            if @remaining > 0
+              flush
+              raise "expected '$', got '#{line[0]}'" 
+            end
             parts = line.split(' ')
             @remaining = parts.size
             parts.each {|l| yield l}

@@ -1,0 +1,3 @@
+#!/usr/bin/env ruby
+Dir.chdir File.join(File.dirname(__FILE__), '..')
+exec 'tclsh8.5 tests/test_helper.tcl'
