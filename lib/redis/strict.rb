@@ -12,12 +12,13 @@ class Redis
 
     def redis_f val
       val_downcase = val.downcase
-      if val_downcase == '+inf'
-        1.0/0
-      elsif val_downcase == '-inf'
+      if val_downcase == '-inf'
         -1.0/0
+      elsif val_downcase =~ /^[+]?inf$/
+        1.0/0
+      elsif !(self =~ /^[ +]?[0-9.e-]*$/)
+        raise "weight value is not a double"
       else
-        raise "weight value is not a double" unless self =~ /^[ +]?[0-9.e-]*$/
         to_f
       end
     end
@@ -56,10 +57,11 @@ class ::String
 
   def to_redis_f
     self_downcase = self.downcase
-    if self_downcase == '+inf'
-      1.0/0
-    elsif self_downcase == '-inf'
+    Redis.logger.warn self_downcase
+    if self_downcase == '-inf'
       -1.0/0
+    elsif self_downcase =~ /^[+]?inf$/
+      1.0/0
     else
       raise "weight value is not a double" unless self =~ /^[ +]?[0-9.e-]*$/
       to_f

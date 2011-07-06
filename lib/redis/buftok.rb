@@ -3,6 +3,9 @@ require File.join(File.dirname(__FILE__), '../redis')
 class Redis
   
   class BufferedTokenizer < Array
+
+    class Error < StandardError
+    end
     
     # Minimize the amount of memory copying.
     # Similar to EventMachine::BufferedTokenizer.
@@ -59,16 +62,18 @@ class Redis
           break unless line
           case line[0..0]
           when '-'
-            yield RuntimeError.new line[1..-1]
+            yield Error.new line[1..-1]
           when '+'
             yield line[1..-1]
           when ':'
             yield line[1..-1].to_i
           when '*'
             @remaining = line[1..-1].to_i
-            if @remaining > 1024*1024
+            if @remaining == -1
+              yield Error.new 'timeout (nil multiblock)' 
+            elsif @remaining > 1024*1024
               flush
-              raise 'invalid multibulk length'
+              raise Error.new 'invalid multibulk length'
             end
           when '$'
             @binary_size = line[1..-1].to_i
@@ -77,12 +82,12 @@ class Redis
               yield nil
             elsif (@binary_size == 0 and line[1..1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
               flush
-              raise 'invalid bulk length'
+              raise Error.new 'invalid bulk length'
             end
           else
             if @remaining > 0
               flush
-              raise "expected '$', got '#{line[0]}'" 
+              raise Error.new "expected '$', got '#{line[0]}'" 
             end
             parts = line.split(' ')
             @remaining = parts.size

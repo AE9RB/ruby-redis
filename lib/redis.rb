@@ -18,13 +18,13 @@ class Redis
   
   include Send
   
-  class Deferrable
+  class Command
     include EventMachine::Deferrable
     def callback; super; self; end
     def errback; super; self; end
     def timeout *args; super; self; end
   end
-
+  
   def initialize
     @buftok = BufferedTokenizer.new
     @queue = EventMachine::Queue.new
@@ -40,15 +40,15 @@ class Redis
   
   def receive_data data
     @buftok.extract(data) do |*data|
-      @queue.pop do |deferrable| 
-        if data.size == 1 and StandardError === data[0]
+      @queue.pop do |deferrable|
+        if data.size == 1 and Exception === data[0]
           deferrable.fail data[0].message
         else
           deferrable.succeed *data
         end
       end
     end
-  rescue StandardError => e
+  rescue Exception => e
     @queue.pop do |deferrable| 
       deferrable.fail e.message
     end
@@ -56,14 +56,24 @@ class Redis
   end
   
   def method_missing method, *args, &block
-    deferrable = Deferrable.new
+    deferrable = Command.new
     deferrable.errback do |msg|
       unless msg
         deferrable.fail 'command timeout'
         close_connection 
       end
     end
-    deferrable.callback &block if block_given?
+    transform = self.class.transforms[method.downcase]
+    if transform and Proc === transform
+      deferrable.callback do |*data|
+        begin
+          deferrable.succeed transform.call *data
+        rescue Exception => e
+          deferrable.fail e.message
+        end
+      end
+    end
+    deferrable.callback &block if block
     @queue.push deferrable
     send_redis args.reduce([method]){ |arr, arg|
       if Hash === arg
@@ -74,6 +84,79 @@ class Redis
     }
     deferrable
   end
+
+  # All redis commands with a single return value are defined here.
+  # Strings and integers are included for the blocking implementation.
+  # The default processing is for a multiblock; so new/custom commands
+  # will always return an array until you configure them.  ex.
+  #   Redis.transforms[:mycustom1] = Redis.transforms[:del] # integer
+  #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
+  def self.transforms
+    @@transforms ||= lambda {
+      status = string = integer = true
+      boolean = lambda { |tf| tf == 1 ? true : false }
+      hash = lambda { |*hash| Hash[*hash] }
+      {
+        #keys
+        :del => integer,
+        :exists => boolean,
+        :expire => boolean,
+        :expireat => boolean,
+        :move => boolean,
+        :persist => boolean,
+        :randomkey => string,
+        :rename => status,
+        :renamenx => boolean,
+        :ttl => integer,
+        :type => status,
+        #strings
+        :append => integer,
+        :decr => integer,
+        :decrby => integer,
+        :get => string,
+        :getbit => integer,
+        :getrange => string,
+        :getset => string,
+        :incr => integer,
+        :incrby => integer,
+        :mset => status,
+        :msetnx => boolean,
+        :set => status,
+        :setbit => integer,
+        :setex => status,
+        :setnx => boolean,
+        :setrange => integer,
+        :strlen => integer,
+        #hashes
+        :hdel => integer,
+        :hexists => boolean,
+        :hgetall => hash,
+        :hincrby => integer,
+        :hlen => integer,
+        :hmset => status,
+        :hset => boolean,
+        :hsetnx => boolean,
+        #lists
+        :lindex => string,
+        :linsert => integer,
+        :llen => integer,
+        :lpop => string,
+        :lpush => integer,
+        :lpushx => integer,
+        :lrem => integer,
+        :lset => status,
+        :ltrim => status,
+        :rpop => string,
+        :rpoplpush => string,
+        :rpush => integer,
+        :rpushx => integer,
+        #connection
+        :ping => status,
+        #TODO
+      }
+    }.call
+  end
+
   
 end
 

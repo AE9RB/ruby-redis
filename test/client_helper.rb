@@ -1,38 +1,41 @@
 require 'eventmachine'
 require 'thread'
 
-# We need exceptions and assertions on the main thread for testing.
-# This will not leak threads because EM.run only blocks the first time.
+class Redis::Client
 
-class BlockingRedis
-
-  attr :timeout
+  attr_accessor :timeout
 
   def initialize io
     @timeout = 1
     thread = Thread.current
     error = nil
-    Thread.new do
-      begin
-        EventMachine.run do
-          @redis = EventMachine::attach io, Redis
+    if EventMachine.reactor_running?
+      @redis = EventMachine.attach io, Redis
+    else
+      # Send reactor elsewhere because we want exceptions
+      # and assertions on the main thread for testing.
+      Thread.new do
+        begin
+          EventMachine.run do
+            @redis = EventMachine.attach io, Redis
+            thread.wakeup
+          end
+        rescue Exception => e
+          error = e
           thread.wakeup
         end
-      rescue Exception => e
-        error = e
-        thread.wakeup
       end
+      sleep
     end
-    sleep
     raise error if error
   end
   
   def method_missing method, *args, &block
     result = error = nil
-    thread = Thread.current
     if @redis.respond_to? method
-      result = @redis.send(method, *args, &block)
+      result = @redis.send method, *args, &block
     else
+      thread = Thread.current
       @redis.send(method, *args).callback{ |*msg|
         result = msg
         thread.wakeup
@@ -43,13 +46,13 @@ class BlockingRedis
       sleep
     end
     raise error if error
-    result
+    if Redis.transforms.has_key? method.downcase
+      raise 'too many results' unless result.size == 1
+      result[0]
+    else
+      result
+    end
   end
-
-  # Could be suitable for application use if commands are prototyped.
-  # def hgetall key
-  #   Hash[*method_missing(:hgetall, key)]
-  # end
   
 end
 

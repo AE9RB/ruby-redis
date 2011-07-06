@@ -141,7 +141,7 @@ class Redis
       raise e if CloseConnection === e
       # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
       # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
-      Response["-ERR #{e.message}\r\n"]
+      Response["-ERR #{e.class.name}: #{e.message}\r\n" ]
     end
   
     # Process incoming redis protocol
@@ -159,7 +159,7 @@ class Redis
       if CloseConnection === e
         close_connection_after_writing
       else
-        send_data "-ERR Protocol error: #{e.message}\r\n" 
+        send_data "-ERR #{e.class.name}: #{e.message}\r\n" 
       end
     end
 
