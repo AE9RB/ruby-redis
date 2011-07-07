@@ -24,7 +24,7 @@ class Redis
     def errback; super; self; end
     def timeout *args; super; self; end
   end
-  
+
   def initialize
     @buftok = BufferedTokenizer.new
     @queue = EventMachine::Queue.new
@@ -41,7 +41,7 @@ class Redis
   def receive_data data
     @buftok.extract(data) do |*data|
       @queue.pop do |deferrable|
-        if data.size == 1 and Exception === data[0]
+        if data.size == 1 and Exception === data[0] and !(MultiBlockNil === data[0])
           deferrable.fail data[0].message
         else
           deferrable.succeed *data
@@ -88,7 +88,7 @@ class Redis
   # All redis commands with a single return value are defined here.
   # Strings and integers are included for the blocking implementation.
   # The default processing is for a multiblock; so new/custom commands
-  # will always return an array until you configure them.  ex.
+  # will always send an array until you configure them.  ex.
   #   Redis.transforms[:mycustom1] = Redis.transforms[:del] # integer
   #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
   def self.transforms
@@ -96,6 +96,8 @@ class Redis
       status = string = integer = true
       boolean = lambda { |tf| tf == 1 ? true : false }
       hash = lambda { |*hash| Hash[*hash] }
+      bpop =  lambda { |*data| (data.size == 1 and MultiBlockNil === data[0]) ? nil : data }
+      bpoppush =  lambda { |data| MultiBlockNil === data ? nil : data }
       {
         #keys
         :del => integer,
@@ -137,6 +139,9 @@ class Redis
         :hset => boolean,
         :hsetnx => boolean,
         #lists
+        :blpop => bpop,
+        :brpop => bpop,
+        :brpoplpush => bpoppush,
         :lindex => string,
         :linsert => integer,
         :llen => integer,
@@ -150,9 +155,54 @@ class Redis
         :rpoplpush => string,
         :rpush => integer,
         :rpushx => integer,
+        #sets
+        :sadd => integer,
+        :scard => integer,
+        :sdiffstore => integer,
+        :sinterstore => integer,
+        :sismember => boolean,
+        :smove => boolean,
+        :spop => string,
+        :srandmember => string,
+        :srem => boolean,
+        :sunionstore => integer,
+        #zsets
+        :zadd => integer,
+        :zcard => integer,
+        :zcount => integer,
+        :zincrby => string,
+        :zinterstore => integer,
+        :zrank => integer,
+        :zrem => boolean,
+        :zremrangebyrank => integer,
+        :zremrangebyscore => integer,
+        :zrevrank => integer,
+        :zscore => string,
+        :zunionstore => integer,
+        #pubsub
+        :publish => integer,
+        #transactions
+        :discard => status,
+        :multi => status,
+        :unwatch => status,
+        :watch => status,
         #connection
+        :auth => status,
+        :echo => string,
         :ping => status,
-        #TODO
+        :quit => status,
+        :select => status,
+        #server
+        :bgrewriteaof => status,
+        :bgsave => status,
+        :config => string,
+        :dbsize => integer,
+        :flushall => status,
+        :flushdb => status,
+        :info => string,
+        :lastsave => integer,
+        :shutdown => status,
+        :slaveof => status,
       }
     }.call
   end
