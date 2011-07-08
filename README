@@ -1,11 +1,39 @@
-Tests from redis 2.2.8 are running.  Run test.rb.
+This project was started because I needed an authentication and routable
+proxy for Redis.  Special attention was paid to performance of the basic
+Redis protocol.  All of the magic is in buftok.rb.  This same parser can
+be used for both clients and servers.  
 
-Passing tests: printver auth protocol basic list set
-               zset hash sort expire cas quit pubsub
-         
-The only significant work that remains is saving and loading.
+The client will be completed soon.  All commands work except pubsub and
+multi/exec, which I'm implementing now.  The blocking client used by
+tests will be brought into the main library for general use.
 
-Benchmark parameters:
+The server has the complete command set except for anything that needs
+save and load to work.  There's no technical this hasn't been done, it's
+just a very low priority.  Having a complete command set allows me to
+extensively test buftok.rb against the C Redis test suite (in TCL).
+
+I'm available to help if anyone wants to tackle saving and loading.
+Replication is pretty easy to add once that is working.  These features
+are all that we need to have a complete server in Ruby.
+
+Client benchmark:
+The em-redis client can be faster when the payload is small enough to
+not need reassembly.  Once you include data, there is no contest.
+My laptop with Ruby 1.9 performing redis get operations to itself:
+
+           gets  size       user     system      total        real
+em-redis   75000  20b   2.570000   0.790000   3.360000 (  3.719082)
+ruby-redis 75000  20b   3.390000   0.410000   3.800000 (  3.955804)
+em-redis   20000   8k   1.560000   0.950000   2.510000 (  2.674317)
+ruby-redis 20000   8k   1.560000   0.510000   2.070000 (  2.241403)
+em-redis   10000  64k   4.170000   1.760000   5.930000 (  6.123727)
+ruby-redis 10000  64k   1.780000   0.780000   2.560000 (  2.710464)
+em-redis   250     1m  11.350000  10.720000  22.070000 ( 22.677349)
+ruby-redis 250     1m   0.370000   0.350000   0.720000 (  0.750893)
+
+
+Server benchmark:
+Note that this is 32-bit Ruby vs 32-bit Redis.
 EC2 ami-2a1fec43 on c1.medium
 Ruby 1.9.2-p180
 1000 parallel clients 
