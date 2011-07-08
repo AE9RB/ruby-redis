@@ -36,7 +36,7 @@ class Redis::Client
       result = @redis.send method, *args, &block
     else
       thread = Thread.current
-      @redis.send(method, *args).callback{ |*msg|
+      @redis.send(method, *args).callback{ |msg|
         result = msg
         thread.wakeup
       }.errback{ |msg|
@@ -46,12 +46,7 @@ class Redis::Client
       sleep
     end
     raise error if error
-    if Redis.transforms.has_key? method.downcase
-      raise 'too many results' unless result.size == 1
-      result[0]
-    else
-      result
-    end
+    result
   end
   
 end

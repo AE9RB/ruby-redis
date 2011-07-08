@@ -80,6 +80,8 @@ class Redis
         data.each do |item|
           send_data item
         end
+      elsif Integer === data
+        send_data ":#{data}\r\n"
       else
         super
       end
@@ -146,7 +148,7 @@ class Redis
   
     # Process incoming redis protocol
     def receive_data data
-      @buftok.extract(data) do |*strings|
+      @buftok.extract(data) do |strings|
         # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
         if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
           @multi << strings

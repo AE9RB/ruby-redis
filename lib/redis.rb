@@ -39,18 +39,18 @@ class Redis
   end
   
   def receive_data data
-    @buftok.extract(data) do |*data|
+    @buftok.extract(data) do |data|
       @queue.pop do |deferrable|
-        if data.size == 1 and Exception === data[0] and !(MultiBlockNil === data[0])
-          deferrable.fail data[0].message
+        if Exception === data
+          deferrable.fail data
         else
-          deferrable.succeed *data
+          deferrable.succeed data
         end
       end
     end
   rescue Exception => e
     @queue.pop do |deferrable| 
-      deferrable.fail e.message
+      deferrable.fail e
     end
     close_connection
   end
@@ -65,11 +65,11 @@ class Redis
     end
     transform = self.class.transforms[method.downcase]
     if transform and Proc === transform
-      deferrable.callback do |*data|
+      deferrable.callback do |data|
         begin
-          deferrable.succeed transform.call *data
+          deferrable.succeed transform.call data
         rescue Exception => e
-          deferrable.fail e.message
+          deferrable.fail e
         end
       end
     end
@@ -85,19 +85,16 @@ class Redis
     deferrable
   end
 
-  # All redis commands with a single return value are defined here.
-  # Strings and integers are included for the blocking implementation.
+  # All redis commands with a non-array return value are defined here.
   # The default processing is for a multiblock; so new/custom commands
   # will always send an array until you configure them.  ex.
   #   Redis.transforms[:mycustom1] = Redis.transforms[:del] # integer
   #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
   def self.transforms
     @@transforms ||= lambda {
-      status = string = integer = true
-      boolean = lambda { |tf| tf == 1 ? true : false }
-      hash = lambda { |*hash| Hash[*hash] }
-      bpop =  lambda { |*data| (data.size == 1 and MultiBlockNil === data[0]) ? nil : data }
-      bpoppush =  lambda { |data| MultiBlockNil === data ? nil : data }
+      status = string = integer = lambda { |array| array[0] }
+      boolean = lambda { |tf| tf[0] == 1 ? true : false }
+      hash = lambda { |hash| Hash[*hash] }
       {
         #keys
         :del => integer,
@@ -139,9 +136,6 @@ class Redis
         :hset => boolean,
         :hsetnx => boolean,
         #lists
-        :blpop => bpop,
-        :brpop => bpop,
-        :brpoplpush => bpoppush,
         :lindex => string,
         :linsert => integer,
         :llen => integer,

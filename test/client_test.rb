@@ -66,23 +66,6 @@ describe 'Redis Client' do
       sleep
     end
 
-    it 'sends string from BRPOPLPUSH on success' do
-      @r.del('mylist')
-      @r.rpush('mylist', 'dinner').must_equal 1
-      result = error = nil
-      emrun do |redis, thread|
-        redis.brpoplpush('mylist', 'mylist2', 0).callback do |msg|
-          result = msg
-          thread.wakeup
-        end.errback do |e|
-          error = e
-          thread.wakeup
-        end.timeout 5
-      end
-      flunk error if error
-      result.must_equal 'dinner'
-    end
-
     it 'sends nil from BRPOPLPUSH on failure' do
       @r.del('mylist')
       result = error = nil
@@ -114,22 +97,6 @@ describe 'Redis Client' do
       end
       flunk error if error
       result.must_equal ['mylist', 'lunch']
-    end
-
-    it 'sends nil from BRPOP on failure' do
-      @r.del('mylist')
-      result = error = nil
-      emrun do |redis, thread|
-        redis.brpop('mylist', 1).callback do |msg|
-          result = msg
-          thread.wakeup
-        end.errback do |e|
-          error = e
-          thread.wakeup
-        end.timeout 5
-      end
-      flunk error if error
-      result.must_be_nil
     end
 
   end

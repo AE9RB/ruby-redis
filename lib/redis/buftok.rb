@@ -2,9 +2,9 @@ require File.join(File.dirname(__FILE__), '../redis')
 
 class Redis
   
-  class MultiBlockNil < StandardError
+  class Error < Exception
   end
-
+  
   class BufferedTokenizer < Array
 
     # Minimize the amount of memory copying.
@@ -22,13 +22,22 @@ class Redis
       unshift_split if @split
       push data
       frame do |str|
-        @elements << str
-        if @remaining > 0
-          @remaining -= 1
-          next unless @remaining == 0
+        if Exception === str
+          yield str
+        else
+          @elements << str
+          if @remaining > 0
+            @remaining -= 1
+            next unless @remaining == 0
+          end
+          if @remaining < 0
+            yield nil
+          elsif !@elements.empty?
+            yield @elements
+          end
         end
-        yield *@elements unless @elements.empty?
-        @elements.clear
+        @elements = []
+        @remaining = 0
       end
     end
     
@@ -62,7 +71,7 @@ class Redis
           break unless line
           case line[0..0]
           when '-'
-            yield RuntimeError.new line[1..-1]
+            yield Error.new line[1..-1]
           when '+'
             yield line[1..-1]
           when ':'
@@ -70,7 +79,7 @@ class Redis
           when '*'
             @remaining = line[1..-1].to_i
             if @remaining == -1
-              yield MultiBlockNil.new
+              yield nil
             elsif @remaining > 1024*1024
               flush
               raise 'invalid multibulk length'
