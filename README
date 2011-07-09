@@ -1,20 +1,20 @@
-This project was started because I needed an authentication and routable
+This project was started because I needed an authenticating and routable
 proxy for Redis.  Special attention was paid to performance of the basic
 Redis protocol.  All of the magic is in buftok.rb.  This same parser can
-be used for both clients and servers.  
+be used for both clients and servers/proxies/routers.
 
 The client will be completed soon.  All commands work except pubsub and
 multi/exec, which I'm implementing now.  The blocking client used by
 tests will be brought into the main library for general use.
 
 The server has the complete command set except for anything that needs
-save and load to work.  There's no technical this hasn't been done, it's
-just a very low priority.  Having a complete command set allows me to
+save and load to work.  Having a complete command set allows me to
 extensively test buftok.rb against the C Redis test suite (in TCL).
 
 I'm available to help if anyone wants to tackle saving and loading.
-Replication is pretty easy to add once that is working.  These features
-are all that we need to have a complete server in Ruby.
+Replication is pretty easy to add once that is working.  There's no
+technical reason this hasn't been done, it's just a very low priority.
+These features are all that we need to have a complete server in Ruby.
 
 Client benchmark:
 The em-redis client can be faster when the payload is small enough to

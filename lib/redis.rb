@@ -20,9 +20,73 @@ class Redis
   
   class Command
     include EventMachine::Deferrable
+    def initialize connection
+      @connection = connection
+      self.errback do |msg|
+        # game over on timeout
+        @connection.close_connection unless msg
+      end
+    end
     def callback; super; self; end
     def errback; super; self; end
     def timeout *args; super; self; end
+  end
+  
+  # Yielded by multi_exec to proxy and collect commands
+  class Multi < Command
+    include Enumerable
+    def initialize *args
+      super
+      @commands = []
+    end
+    def each
+      @commands.each {|x|yield x}
+    end
+    def size
+      @commands.size
+    end
+    def method_missing method, *args, &block
+      command = @connection.send method, *args, &block
+      proxy = Command.new @connection
+      command.callback do |status|
+        @commands << proxy
+      end
+      command.errback do |err|
+        @commands << err
+        proxy.fail err
+      end
+      proxy
+    end
+  end
+  
+  # Wrap around multi and exec.  Leaves the raw calls
+  # to multi and exec open for custom implementations.
+  def multi_exec
+    self.multi.errback do
+      # This only happens in the case of a programming error.
+      # The alternative is to block until we are sure that
+      # a nesting error isn't going to come back.
+      @connection.close_connection
+    end
+    yield redis_multi = Multi.new(self)
+    redis_exec = self.exec
+    redis_exec.callback do |results|
+      normalized_results = []
+      redis_multi.each do |command|
+        if Exception === command
+          normalized_results << command
+        else
+          result = results.shift
+          normalized_results << result
+          if Exception === result
+            command.fail result
+          else
+            command.succeed result
+          end
+        end
+      end
+      redis_exec.succeed normalized_results
+    end
   end
 
   def initialize
@@ -56,13 +120,7 @@ class Redis
   end
   
   def method_missing method, *args, &block
-    deferrable = Command.new
-    deferrable.errback do |msg|
-      unless msg
-        deferrable.fail 'command timeout'
-        close_connection 
-      end
-    end
+    deferrable = Command.new self
     transform = self.class.transforms[method.downcase]
     if transform and Proc === transform
       deferrable.callback do |data|
@@ -87,7 +145,7 @@ class Redis
 
   # All redis commands with a non-array return value are defined here.
   # The default processing is for a multiblock; so new/custom commands
-  # will always send an array until you configure them.  ex.
+  # will always send an array (or nil) until you configure them.  ex.
   #   Redis.transforms[:mycustom1] = Redis.transforms[:del] # integer
   #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
   def self.transforms
