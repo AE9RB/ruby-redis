@@ -98,32 +98,25 @@ class Redis
 
   def initialize
     @buftok = BufferedTokenizer.new
-    @queue = EventMachine::Queue.new
+    @queue = []
   end
   
   def unbind
-    @queue.size.times do
-      @queue.pop do |deferrable| 
-        deferrable.fail RuntimeError.new 'connection closed'
-      end
-    end
+    @queue.each { |d| d.fail RuntimeError.new 'connection closed' }
+    @queue = []
   end
   
   def receive_data data
     #TODO make optional hiredis/reader, it's faster than buftok
     @buftok.extract(data) do |data|
-      @queue.pop do |deferrable|
-        if Exception === data
-          deferrable.fail data
-        else
-          deferrable.succeed data
-        end
+      if Exception === data
+        @queue.shift.fail data
+      else
+        @queue.shift.succeed data
       end
     end
   rescue Exception => e
-    @queue.pop do |deferrable| 
-      deferrable.fail e
-    end
+    @queue.shift.fail e
     close_connection
   end
   

@@ -1,71 +1,63 @@
 require File.join(File.dirname(__FILE__), '../lib/redis')
-require 'em-redis'
+require 'em-synchrony' # >= 0.3
+require 'em-synchrony/em-hiredis'
 require 'benchmark'
 
-def runit use_rr, qty, data
-  
-  thread = Thread.current
-  success = 0
-  Thread.new do
-    EM.run do
-      if use_rr
-        redis = EventMachine.connect '127.0.0.1', 6379, Redis
-      else
-        redis = EM::Protocols::Redis.connect
-      end
-      redis.set "a", data do |response|
-        qty.times do
-          redis.get "a" do |response|
-            success += 1
-            if success >= qty
-              thread.wakeup
-              EM.stop
-            end
-          end
+# I couldn't get em-redis stable enough to include here, but
+# it was slower on every test, 20-30X slower on 1gig strings.
+
+def runit kind, qty, data
+  EventMachine.synchrony do
+    success = 0
+    case kind
+    when :ruby_redis
+      redis = EventMachine.connect '127.0.0.1', 6379, Redis
+    when :em_hiredis
+      redis = EM::Hiredis::Client.connect
+    end
+    redis.set("a", data)
+    qty.times do
+      redis.get "a" do |response|
+        success += 1
+        if success == qty
+          redis.close_connection
+          EM.stop 
         end
       end
     end
   end
-  sleep
-  
+
+  return
+
 end
 
 Benchmark.bmbm do |bm|
 
-  data8k = 'ABCD'*2048
   data64k = 'XYZ!'*16384
   data1m = data64k*16
+
+  bm.report("ruby-redis 75000  10b")  {
+    runit :ruby_redis, 75000, 'xyzzy'*2
+  }
   
-  bm.report("em-redis   75000  20b")  {
-    runit false, 75000, 'xyzzy'*4
+  bm.report("em-hiredis 75000  10b")  {
+    runit :em_hiredis, 75000, 'xyzzy'*2
   }
-
-  bm.report("ruby-redis 75000  20b")  {
-    runit true, 75000, 'xyzzy'*4
-  }
-
-  bm.report("em-redis   20000   8k")  {
-    runit false, 20000, data8k
-  }
-
-  bm.report("ruby-redis 20000   8k")  {
-    runit true, 20000, data8k
-  }
-
-  bm.report("em-redis   10000  64k")  {
-    runit false, 10000, data64k
-  }
-
+  
   bm.report("ruby-redis 10000  64k")  {
-    runit true, 10000, data64k
+    runit :ruby_redis, 10000, data64k
+  }
+  
+  bm.report("em-hiredis 10000  64k")  {
+    runit :em_hiredis, 10000, data64k
+  }
+  
+  bm.report("ruby-redis   250   1m")  {
+    runit :ruby_redis, 250, data1m
   }
 
-  bm.report("em-redis   250     1m")  {
-    runit false, 250, data1m
+  bm.report("em-hiredis   250   1m")  {
+    runit :em_hiredis, 250, data1m
   }
-
-  bm.report("ruby-redis 250     1m")  {
-    runit true, 250, data1m
-  }
-
+  
 end
