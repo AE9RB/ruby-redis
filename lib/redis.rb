@@ -71,6 +71,8 @@ class Redis
     yield redis_multi = Multi.new(self)
     redis_exec = self.exec
     redis_exec.callback do |results|
+      # Normalized results include syntax errors and original references.
+      # Command callbacks are meant to run before exec callbacks.
       normalized_results = []
       redis_multi.each do |command|
         if Exception === command
@@ -143,118 +145,36 @@ class Redis
     deferrable
   end
 
-  # All redis commands with a non-array return value are defined here.
-  # The default processing is for a multiblock; so new/custom commands
-  # will always send an array (or nil) until you configure them.  ex.
-  #   Redis.transforms[:mycustom1] = Redis.transforms[:del] # integer
+  # Some data is best transformed into a Ruby type.  You can set up global
+  # transforms here that are automatically attached to command callbacks.
+  #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
   #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
   def self.transforms
     @@transforms ||= lambda {
-      status = string = integer = lambda { |array| array[0] }
       boolean = lambda { |tf| tf[0] == 1 ? true : false }
       hash = lambda { |hash| Hash[*hash] }
       {
         #keys
-        :del => integer,
         :exists => boolean,
         :expire => boolean,
         :expireat => boolean,
         :move => boolean,
         :persist => boolean,
-        :randomkey => string,
-        :rename => status,
         :renamenx => boolean,
-        :ttl => integer,
-        :type => status,
         #strings
-        :append => integer,
-        :decr => integer,
-        :decrby => integer,
-        :get => string,
-        :getbit => integer,
-        :getrange => string,
-        :getset => string,
-        :incr => integer,
-        :incrby => integer,
-        :mset => status,
         :msetnx => boolean,
-        :set => status,
-        :setbit => integer,
-        :setex => status,
         :setnx => boolean,
-        :setrange => integer,
-        :strlen => integer,
         #hashes
-        :hdel => integer,
         :hexists => boolean,
         :hgetall => hash,
-        :hincrby => integer,
-        :hlen => integer,
-        :hmset => status,
         :hset => boolean,
         :hsetnx => boolean,
-        #lists
-        :lindex => string,
-        :linsert => integer,
-        :llen => integer,
-        :lpop => string,
-        :lpush => integer,
-        :lpushx => integer,
-        :lrem => integer,
-        :lset => status,
-        :ltrim => status,
-        :rpop => string,
-        :rpoplpush => string,
-        :rpush => integer,
-        :rpushx => integer,
         #sets
-        :sadd => integer,
-        :scard => integer,
-        :sdiffstore => integer,
-        :sinterstore => integer,
         :sismember => boolean,
         :smove => boolean,
-        :spop => string,
-        :srandmember => string,
         :srem => boolean,
-        :sunionstore => integer,
         #zsets
-        :zadd => integer,
-        :zcard => integer,
-        :zcount => integer,
-        :zincrby => string,
-        :zinterstore => integer,
-        :zrank => integer,
         :zrem => boolean,
-        :zremrangebyrank => integer,
-        :zremrangebyscore => integer,
-        :zrevrank => integer,
-        :zscore => string,
-        :zunionstore => integer,
-        #pubsub
-        :publish => integer,
-        #transactions
-        :discard => status,
-        :multi => status,
-        :unwatch => status,
-        :watch => status,
-        #connection
-        :auth => status,
-        :echo => string,
-        :ping => status,
-        :quit => status,
-        :select => status,
-        #server
-        :bgrewriteaof => status,
-        :bgsave => status,
-        :config => string,
-        :dbsize => integer,
-        :flushall => status,
-        :flushdb => status,
-        :info => string,
-        :lastsave => integer,
-        :shutdown => status,
-        :slaveof => status,
       }
     }.call
   end

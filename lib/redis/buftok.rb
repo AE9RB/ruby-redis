@@ -4,14 +4,18 @@ class Redis
   
   class Error < Exception
   end
+
+  class Status < String
+  end
   
   class BufferedTokenizer < Array
 
-    # Minimize the amount of memory copying.
-    # Similar to EventMachine::BufferedTokenizer.
-    # This will be ported to C when complete.
-    
-    #TODO max buffer size and stack depth
+    # Minimize the amount of memory copying. The primary
+    # performance trick is to String#split and work with that.
+
+    #TODO port to C when fully baked
+    #TODO configurable limits
+    #TODO max buffer size based on limits
     
     def initialize
       super()
@@ -22,25 +26,21 @@ class Redis
       unshift_split if @split
       push data
       frame do |str|
-        if Exception === str and @stack.empty? and @elements.empty? and @remaining == 0
-          yield str
-        else
-          @elements << str
-          if @remaining > 0
+        @elements << str
+        if @remaining > 0
+          @remaining -= 1
+          if @remaining == 0 and !@stack.empty?
+            elements = @elements
+            @elements, @remaining = @stack.pop
+            @elements << elements
             @remaining -= 1
-            if @remaining == 0 and !@stack.empty?
-              elements = @elements
-              @elements, @remaining = @stack.pop
-              @elements << elements
-              @remaining -= 1
-            end
-            next unless @remaining == 0
           end
-          if @remaining < 0
-            yield nil
-          elsif !@elements.empty?
-            yield @elements
-          end
+          next unless @remaining == 0
+          yield @elements
+        elsif @remaining < 0
+          yield nil
+        elsif !@elements.empty?
+          yield @elements[0]
         end
         @elements = []
         @remaining = 0
@@ -59,7 +59,6 @@ class Redis
       clear
     end
     
-    # The primary performance trick is to String#split and work with that.
     def unshift_split
       unshift @split.join "\n"
       @split = nil
@@ -80,7 +79,7 @@ class Redis
           when '-'
             yield Error.new line[1..-1]
           when '+'
-            yield line[1..-1]
+            yield Status.new line[1..-1]
           when ':'
             yield line[1..-1].to_i
           when '*'
