@@ -11,7 +11,7 @@ class Redis
     # Similar to EventMachine::BufferedTokenizer.
     # This will be ported to C when complete.
     
-    #TODO max buffer size
+    #TODO max buffer size and stack depth
     
     def initialize
       super()
@@ -22,12 +22,18 @@ class Redis
       unshift_split if @split
       push data
       frame do |str|
-        if Exception === str
+        if Exception === str and @stack.empty? and @elements.empty? and @remaining == 0
           yield str
         else
           @elements << str
           if @remaining > 0
             @remaining -= 1
+            if @remaining == 0 and !@stack.empty?
+              elements = @elements
+              @elements, @remaining = @stack.pop
+              @elements << elements
+              @remaining -= 1
+            end
             next unless @remaining == 0
           end
           if @remaining < 0
@@ -49,6 +55,7 @@ class Redis
       @binary_size = nil
       @remaining = 0
       @elements = []
+      @stack = []
       clear
     end
     
@@ -77,12 +84,16 @@ class Redis
           when ':'
             yield line[1..-1].to_i
           when '*'
+            prev_remaining = @remaining
             @remaining = line[1..-1].to_i
             if @remaining == -1
               yield nil
             elsif @remaining > 1024*1024
               flush
               raise 'invalid multibulk length'
+            elsif prev_remaining > 0
+              @stack << [@elements, prev_remaining]
+              @elements = []
             end
           when '$'
             @binary_size = line[1..-1].to_i
