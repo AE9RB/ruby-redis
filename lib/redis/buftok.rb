@@ -13,7 +13,8 @@ class Redis
     # Minimize the amount of memory copying. The primary
     # performance trick is to String#split and work with that.
 
-    #TODO port to C when fully baked
+    #TODO port to C when fully baked, start with hiredis/reader
+    #     no hurry since we are nearly as fast in pure ruby
     #TODO configurable limits
     #TODO max buffer size based on limits
     

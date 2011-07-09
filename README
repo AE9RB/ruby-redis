@@ -3,9 +3,8 @@ proxy for Redis.  Special attention was paid to performance of the basic
 Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers/proxies/routers.
 
-The client will be completed soon.  All commands work except pubsub and
-multi/exec, which I'm implementing now.  The blocking client used by
-tests will be brought into the main library for general use.
+The client will be completed soon.  All commands work except pubsub. The
+blocking client currently used by tests will be exported soon.
 
 The server has the complete command set except for anything that needs
 save and load to work.  Having a complete command set allows me to

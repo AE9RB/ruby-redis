@@ -109,6 +109,7 @@ class Redis
   end
   
   def receive_data data
+    #TODO make optional hiredis/reader, it's faster than buftok
     @buftok.extract(data) do |data|
       @queue.pop do |deferrable|
         if Exception === data
