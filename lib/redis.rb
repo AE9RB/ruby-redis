@@ -73,21 +73,25 @@ class Redis
     redis_exec.callback do |results|
       # Normalized results include syntax errors and original references.
       # Command callbacks are meant to run before exec callbacks.
-      normalized_results = []
-      redis_multi.each do |command|
-        if Exception === command
-          normalized_results << command
-        else
-          result = results.shift
-          normalized_results << result
-          if Exception === result
-            command.fail result
+      if results == nil
+        redis_exec.succeed nil
+      else
+        normalized_results = []
+        redis_multi.each do |command|
+          if Exception === command
+            normalized_results << command
           else
-            command.succeed result
+            result = results.shift
+            normalized_results << result
+            if Exception === result
+              command.fail result
+            else
+              command.succeed result
+            end
           end
         end
+        redis_exec.succeed normalized_results
       end
-      redis_exec.succeed normalized_results
     end
   end
 

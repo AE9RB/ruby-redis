@@ -24,7 +24,7 @@ describe 'Redis Multi/Exec' do
     end
     
     it 'runs a multi with failures' do
-      inner_result = full_results = error = nil
+      inner_result = full_results = error = false
       emrun do |redis, thread|
         redis.multi_exec do |multi|
           multi.set 'mykey', 'myfoo'
@@ -58,8 +58,24 @@ describe 'Redis Multi/Exec' do
       full_results[8].must_equal %w{1 2 three}
     end
 
-    it 'fails a multi' do
-      #TODO
+    it 'fails multi because of a watch' do
+      full_results = error = false
+      emrun do |redis, thread|
+        redis.del 'mylist'
+        redis.watch 'mylist'
+        redis.set 'mylist', 'tripped'
+        redis.multi_exec do |multi|
+          multi.get 'mylist'
+        end.callback do |results|
+          full_results = results
+          thread.wakeup
+        end.errback do |err|
+          error = true
+          thread.wakeup
+        end
+      end
+      error.must_equal false
+      full_results.must_equal nil
     end
     
     it 'retries a multi' do
