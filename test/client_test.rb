@@ -4,11 +4,12 @@ require 'socket'
 describe 'Redis Client' do
 
   before do
-    @r = Redis::Client.new TCPSocket.new('127.0.0.1', 6379)
+    @redis = EventMachine.connect '127.0.0.1', 6379, Redis
+    @r = @redis.synchrony
   end
   
   after do
-    @r.close_connection
+    @redis.close_connection
   end
   
   describe 'Redis Blocking Client' do
@@ -56,45 +57,29 @@ describe 'Redis Client' do
 
   describe 'Redis Evented Client' do
     
-    def emrun &block
-      thread = Thread.current
-      Thread.new do
-        EM.run do
-          yield EventMachine.connect('127.0.0.1', 6379, Redis), thread
-        end
-      end
-      sleep
-    end
-
     it 'sends nil from BRPOPLPUSH on failure' do
-      @r.del('mylist')
       result = error = nil
-      emrun do |redis, thread|
-        redis.brpoplpush('mylist', 'mylist2', 1).callback do |msg|
-          result = msg
-          thread.wakeup
-        end.errback do |e|
-          error = e
-          thread.wakeup
-        end.timeout 5
+      @r.del('mylist')
+      @redis.brpoplpush('mylist', 'mylist2', 1).callback do |msg|
+        result = msg
+      end.errback do |e|
+        error = e
       end
+      @r.ping
       flunk error if error
       result.must_be_nil
     end
 
     it 'sends array from BLPOP on success' do
+      result = error = nil
       @r.del('mylist')
       @r.rpush('mylist', 'lunch').must_equal 1
-      result = error = nil
-      emrun do |redis, thread|
-        redis.blpop('mylist', 0).callback do |msg|
-          result = msg
-          thread.wakeup
-        end.errback do |e|
-          error = e
-          thread.wakeup
-        end.timeout 5
-      end
+      @redis.blpop('mylist', 0).callback do |msg|
+        result = msg
+      end.errback do |e|
+        error = e
+      end.timeout 5
+      @r.ping
       flunk error if error
       result.must_equal ['mylist', 'lunch']
     end

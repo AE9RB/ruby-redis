@@ -13,6 +13,7 @@ class Redis < EventMachine::Connection ; end
 require_relative 'redis/version'
 require_relative 'redis/buftok'
 require_relative 'redis/send'
+require_relative 'redis/synchrony'
 
 class Redis
   
@@ -103,7 +104,7 @@ class Redis
   def unbind
     @queue.size.times do
       @queue.pop do |deferrable| 
-        deferrable.fail 'connection closed'
+        deferrable.fail RuntimeError.new 'connection closed'
       end
     end
   end
