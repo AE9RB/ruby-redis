@@ -64,10 +64,9 @@ class Redis
   # to multi and exec open for custom implementations.
   def multi_exec
     self.multi.errback do
-      # This only happens in the case of a programming error.
-      # The alternative is to block until we are sure that
-      # a nesting error isn't going to come back.
-      @connection.close_connection
+      # This usually happens in the case of a programming error.
+      # Sometimes it is called when the connection breaks.
+      self.close_connection
     end
     yield redis_multi = Multi.new(self)
     redis_exec = self.exec
@@ -95,9 +94,13 @@ class Redis
       end
     end
   end
-
-  def initialize
-    @buftok = BufferedTokenizer.new
+  
+  def initialize options={}
+    if options[:hiredis]
+      @buftok = HiredisReader.new
+    else
+      @buftok = BufferedTokenizer.new
+    end
     @queue = []
   end
   
@@ -107,7 +110,6 @@ class Redis
   end
   
   def receive_data data
-    #TODO make optional hiredis/reader, it's faster than buftok
     @buftok.extract(data) do |data|
       if Exception === data
         @queue.shift.fail data

@@ -3,8 +3,30 @@ proxy for Redis.  Special attention was paid to performance of the basic
 Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers/proxies/routers.
 
-The client will be completed soon.  All commands work except pubsub. The
-blocking client currently used by tests will be exported soon.
+Client benchmark:
+Ruby Redis with hiredis enabled (rr+hiredis) should outperform the
+other EventMachine clients in your application benchmarks.  The pure ruby
+implementation of the wire protocol (ruby-redis) is almost as fast as
+the hiredis C parser. My laptop with Ruby 1.9 performing redis get
+operations to a C Redis 2.2 server:
+
+             gets size       user     system      total        real
+             
+rr+hiredis  75000  20b   1.870000   0.350000   2.220000 (  2.295852)
+ruby-redis  75000  20b   2.440000   0.380000   2.820000 (  2.902626)
+em-hiredis  75000  20b   3.700000   0.090000   3.790000 (  3.852206)
+em-redis    75000  20b   2.570000   0.790000   3.360000 (  3.719082)
+
+rr+hiredis  10000  64k   2.930000   0.400000   3.330000 (  3.456874)
+ruby-redis  10000  64k   4.930000   0.540000   5.470000 (  5.588033)
+em-hiredis  10000  64k   2.770000   0.390000   3.160000 (  3.264862)
+em-redis    10000  64k   4.170000   1.760000   5.930000 (  6.123727)
+
+rr+hiredis    250   1m   0.730000   0.150000   0.880000 (  0.938491)
+ruby-redis    250   1m   0.760000   0.190000   0.950000 (  0.974382)
+em-hiredis    250   1m   0.730000   0.160000   0.890000 (  0.906150)
+em-redis      250   1m  11.350000  10.720000  22.070000 ( 22.677349)
+
 
 The server has the complete command set except for anything that needs
 save and load to work.  Having a complete command set allows me to
@@ -14,22 +36,6 @@ I'm available to help if anyone wants to tackle saving and loading.
 Replication is pretty easy to add once that is working.  There's no
 technical reason this hasn't been done, it's just a very low priority.
 These features are all that we need to have a complete server in Ruby.
-
-Client benchmark:
-The em-redis client can be faster when the payload is small enough to
-not need reassembly.  Once you include data, there is no contest.
-My laptop with Ruby 1.9 performing redis get operations to itself:
-
-           gets  size       user     system      total        real
-em-redis   75000  20b   2.570000   0.790000   3.360000 (  3.719082)
-ruby-redis 75000  20b   3.390000   0.410000   3.800000 (  3.955804)
-em-redis   20000   8k   1.560000   0.950000   2.510000 (  2.674317)
-ruby-redis 20000   8k   1.560000   0.510000   2.070000 (  2.241403)
-em-redis   10000  64k   4.170000   1.760000   5.930000 (  6.123727)
-ruby-redis 10000  64k   1.780000   0.780000   2.560000 (  2.710464)
-em-redis   250     1m  11.350000  10.720000  22.070000 ( 22.677349)
-ruby-redis 250     1m   0.370000   0.350000   0.720000 (  0.750893)
-
 
 Server benchmark:
 Note that this is 32-bit Ruby vs 32-bit Redis.

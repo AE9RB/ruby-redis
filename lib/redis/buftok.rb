@@ -2,19 +2,26 @@ require File.join(File.dirname(__FILE__), '../redis')
 
 class Redis
   
-  class Error < Exception
-  end
-
-  class Status < String
+  # hiredis doesn't support server protocol
+  class HiredisReader
+    def initialize
+      require 'hiredis/reader'
+      @reader = ::Hiredis::Reader.new
+    end
+    def extract data
+      @reader.feed data
+      until (reply = @reader.gets) == false
+        yield reply
+      end
+    end
   end
   
+  # This is nearly as fast as HiredisReader
   class BufferedTokenizer < Array
 
     # Minimize the amount of memory copying. The primary
     # performance trick is to String#split and work with that.
 
-    #TODO port to C when fully baked, start with hiredis/reader
-    #     no hurry since we are nearly as fast in pure ruby
     #TODO configurable limits
     #TODO max buffer size based on limits
     
@@ -78,9 +85,9 @@ class Redis
           break unless line
           case line[0..0]
           when '-'
-            yield Error.new line[1..-1]
+            yield RuntimeError.new line[1..-1]
           when '+'
-            yield Status.new line[1..-1]
+            yield line[1..-1]
           when ':'
             yield line[1..-1].to_i
           when '*'
