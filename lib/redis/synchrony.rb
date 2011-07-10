@@ -4,6 +4,8 @@ require 'fiber'
 class Redis
   
   # Compatible with em-synchrony
+  # Not included by default, use:
+  #   require 'redis/synchrony'
   
   class Synchrony
     
@@ -18,7 +20,6 @@ class Redis
       }
       df.callback &xback
       df.errback &xback
-
       Fiber.yield
     end
     

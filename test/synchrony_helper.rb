@@ -1,3 +1,5 @@
+require_relative '../lib/redis/synchrony'
+
 def synchrony
   error = nil
   Redis.synchrony do
