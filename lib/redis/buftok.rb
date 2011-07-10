@@ -2,21 +2,7 @@ require_relative '../redis'
 
 class Redis
   
-  # hiredis doesn't support server protocol
-  class HiredisReader
-    def initialize
-      require 'hiredis/reader'
-      @reader = ::Hiredis::Reader.new
-    end
-    def extract data
-      @reader.feed data
-      until (reply = @reader.gets) == false
-        yield reply
-      end
-    end
-  end
-  
-  # This is nearly as fast as HiredisReader
+  # This is almost as fast as HiredisReader
   class BufferedTokenizer < Array
 
     # Minimize the amount of memory copying. The primary

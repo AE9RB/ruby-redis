@@ -3,8 +3,8 @@ class Redis < EventMachine::Connection ; end
 
 require_relative 'redis/version'
 require_relative 'redis/buftok'
+require_relative 'redis/hiredis'
 require_relative 'redis/send'
-require_relative 'redis/synchrony'
 
 class Redis
   
@@ -87,6 +87,12 @@ class Redis
   end
   
   def initialize options={}
+    
+    if options.has_key?(:hiredis)
+      use_hiredis = options[:hiredis]
+    else
+      use_hiredis = @@hiredis_default
+    end
     if options[:hiredis]
       @buftok = HiredisReader.new
     else
