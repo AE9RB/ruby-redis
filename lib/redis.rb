@@ -1,12 +1,3 @@
-# for Ruby older than 1.9
-unless Kernel.respond_to?(:require_relative)
-  module Kernel
-    def require_relative(path)
-      require File.join(File.dirname(caller[0]), path.to_str)
-    end
-  end
-end
-
 require 'eventmachine'
 class Redis < EventMachine::Connection ; end
 
@@ -124,8 +115,7 @@ class Redis
   
   def method_missing method, *args, &block
     deferrable = Command.new self
-    transform = self.class.transforms[method.downcase]
-    if transform and Proc === transform
+    if transform = self.class.transforms[method.downcase]
       deferrable.callback do |data|
         begin
           deferrable.succeed transform.call data
@@ -145,7 +135,7 @@ class Redis
     }
     deferrable
   end
-
+  
   # Some data is best transformed into a Ruby type.  You can set up global
   # transforms here that are automatically attached to command callbacks.
   #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean

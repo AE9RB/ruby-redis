@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), '../redis')
+require_relative '../redis'
 require_relative 'config'
 require_relative 'connection'
 require_relative 'logger'

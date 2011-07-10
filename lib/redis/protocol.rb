@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), '../redis')
+require_relative '../redis'
 require 'eventmachine'
 require_relative 'buftok'
 require_relative 'send'

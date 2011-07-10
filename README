@@ -4,17 +4,17 @@ Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers/proxies/routers.
 
 Client benchmark:
-Ruby Redis with hiredis enabled (rr+hiredis) should outperform the
-other EventMachine clients in your application benchmarks.  The pure ruby
-implementation of the wire protocol (ruby-redis) is almost as fast as
-the hiredis C parser. My laptop with Ruby 1.9 performing redis get
-operations to a C Redis 2.2 server:
+Ruby Redis with hiredis enabled (rr+hiredis) performs about the same
+as em-hiredis. The slight difference is some parameter handling I'm
+not sure will be changed.  The pure Ruby implementation of the wire
+protocol (ruby-redis) is only slightly slower. My laptop with Ruby 1.9
+pipelining get operations to a C Redis 2.2 server:
 
              gets size       user     system      total        real
              
-rr+hiredis  75000  20b   1.870000   0.350000   2.220000 (  2.295852)
-ruby-redis  75000  20b   2.440000   0.380000   2.820000 (  2.902626)
-em-hiredis  75000  20b   3.700000   0.090000   3.790000 (  3.852206)
+rr+hiredis  75000  20b   1.760000   0.090000   1.850000 (  1.873600)
+ruby-redis  75000  20b   2.250000   0.110000   2.360000 (  2.432902)
+em-hiredis  75000  20b   1.550000   0.090000   1.640000 (  1.669631)
 em-redis    75000  20b   2.570000   0.790000   3.360000 (  3.719082)
 
 rr+hiredis  10000  64k   2.930000   0.400000   3.330000 (  3.456874)
