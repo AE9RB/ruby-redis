@@ -3,13 +3,7 @@ require 'fiber'
 
 class Redis
   
-  # This is compatible with em-synchrony
-  
-  def self.synchrony blk=nil, tail=nil, &block
-    blk ||= block
-    context = Proc.new { Fiber.new { blk.call }.resume }
-    EventMachine.run(context, tail)
-  end
+  # Compatible with em-synchrony
   
   class Synchrony
     
@@ -44,6 +38,18 @@ class Redis
       end
       result
     end
+  end
+  
+  class Command
+    def synchrony
+      raise 'synchrony unavilable here'
+    end
+  end
+  
+  def self.synchrony blk=nil, tail=nil, &block
+    blk ||= block
+    context = Proc.new { Fiber.new { blk.call }.resume }
+    EventMachine.run(context, tail)
   end
   
   def synchrony

@@ -19,27 +19,33 @@ class Redis
       elsif Float === data and data.infinite? || 0 < 0
         collect << ":-inf\r\n"
       elsif Hash === data
-        collect << "*#{data.bytesize * 2}\r\n"
+        collect << "*#{data.size * 2}\r\n"
         data.each do |key, value|
+          key = key.to_s
+          value = value.to_s
           collect << "$#{key.bytesize}\r\n"
           collect << key
-          collect << "\r\n"
-          collect << "$#{value.bytesize}\r\n"
+          collect << "\r\n$#{value.bytesize}\r\n"
           collect << value
           collect << "\r\n"
         end
       elsif Enumerable === data
         collect << "*#{data.size}\r\n"
         data.each do |element|
-          element = element.to_s
+          if Float === element
+            element = element.to_s.gsub /\.0$/, ''
+          else
+            element = element.to_s
+          end
           collect << "$#{element.bytesize}\r\n"
           collect << element
           collect << "\r\n"
         end
       else
         if Float === data
-          i = data.to_i
-          data = i if i == data
+          data = data.to_s.gsub /\.0$/, ''
+        else
+          data = data.to_s
         end
         data = data.to_s
         collect << "$#{data.bytesize}\r\n"

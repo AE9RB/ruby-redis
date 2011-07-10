@@ -109,7 +109,7 @@ class Redis
       end
     end
   rescue Exception => e
-    @queue.shift.fail e
+    @queue.shift.fail e unless @queue.empty?
     close_connection
   end
   
