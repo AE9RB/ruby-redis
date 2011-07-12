@@ -110,7 +110,7 @@ start_server {tags {"hash"}} {
     test {HMSET wrong number of args} {
         catch {r hmset smallhash key1 val1 key2} err
         format $err
-    } {*wrong number*}
+    } {*odd number*}
 
     test {HMSET - small hash} {
         set args {}

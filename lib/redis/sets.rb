@@ -6,6 +6,7 @@ class Redis
   
     def redis_SADD key, member
       record = (@database[key] ||= Set.new)
+      redis_t Set, record
       return false if record.include? member
       record.add member
       true
@@ -23,7 +24,8 @@ class Redis
     def redis_SMOVE source, destination, member
       source_record = @database[source] || Set.new
       dest_record = @database[destination]
-      raise 'wrong kind' unless Set === source_record and (!dest_record or Set === dest_record)
+      redis_t Set, source_record
+      redis_t NilClass, Set, dest_record
       return false unless source_record.include? member
       (@database[destination] ||= Set.new).add member
       source_record.delete member
@@ -44,7 +46,10 @@ class Redis
     end
     
     def redis_SINTER *keys
-      keys.reduce(nil) { |memo, key| memo ? memo & (@database[key]||[]) : (@database[key]||Set.new) }
+      keys.each { |key| redis_t NilClass, Array, Set, @database[key] }
+      keys.reduce(nil) do |memo, key| 
+        memo ? memo & (@database[key]||[]) : (@database[key]||Set.new) 
+      end
     end
     
     def redis_SINTERSTORE destination, *keys
@@ -58,6 +63,7 @@ class Redis
     end
 
     def redis_SUNION *keys
+      keys.each { |key| redis_t NilClass, Array, Set, @database[key] }
       keys.reduce(Set.new) { |memo, key| memo | (@database[key]||[]) }
     end
 

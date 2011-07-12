@@ -121,23 +121,7 @@ proc execute_everything {} {
     execute_tests "unit/other"
     execute_tests "unit/cas"
     execute_tests "unit/quit"
-    # execute_tests "integration/replication"
-    # execute_tests "integration/aof"
-#    execute_tests "integration/redis-cli"
     execute_tests "unit/pubsub"
-
-    # run tests with VM enabled
-    set ::global_overrides {vm-enabled yes}
-    # execute_tests "unit/protocol"
-    # execute_tests "unit/basic"
-    # execute_tests "unit/type/list"
-    # execute_tests "unit/type/set"
-    # execute_tests "unit/type/zset"
-    # execute_tests "unit/type/hash"
-    # execute_tests "unit/sort"
-    # execute_tests "unit/expire"
-    # execute_tests "unit/other"
-    # execute_tests "unit/cas"
 }
 
 proc main {} {

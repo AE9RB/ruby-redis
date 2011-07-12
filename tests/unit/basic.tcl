@@ -351,7 +351,7 @@ start_server {tags {"basic"}} {
     test {MSET wrong number of args} {
         catch {r mset x 10 y "foo bar" z} err
         format $err
-    } {*wrong number*}
+    } {*odd number*}
 
     test {MSETNX with already existent key} {
         list [r msetnx x1 xxx y2 yyy x 20] [r exists x1] [r exists y2]

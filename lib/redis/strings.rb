@@ -9,8 +9,7 @@ class Redis
     
     def redis_GET key
       value = @database[key]
-      found = [NilClass, String, Numeric].find { |klass| klass === value }
-      raise 'wrong kind' unless found
+      redis_t NilClass, String, Numeric, value
       value
     end
     
@@ -23,7 +22,7 @@ class Redis
     def redis_SETRANGE key, offset, value
       data = (redis_GET(key)||'').to_s
       return data.size if value.empty?
-      offset = offset.to_redis_pos_i
+      offset = redis_pos_i offset, 'out of range'
       raise 'maximum allowed size' if offset + value.size > 512*1024*1024
       if data.size <= offset
         data.concat 0.chr * (offset - data.size + value.size)
@@ -34,8 +33,8 @@ class Redis
     end
     
     def redis_GETRANGE key, first, last
-      first = first.to_redis_i
-      last = last.to_redis_i
+      first = redis_i first
+      last = redis_i last
       value = redis_GET(key) || ''
       first = 0 if first < -value.size
       value[first..last]
@@ -45,7 +44,7 @@ class Redis
       data = redis_GET key
       return 0 unless data
       data = data.to_s
-      offset = offset.to_redis_pos_i
+      offset = redis_pos_i offset
       byte = offset / 8
       bit = 0x80 >> offset % 8
       return 0 if data.size <= byte
@@ -56,7 +55,7 @@ class Redis
     
     def redis_SETBIT key, offset, value
       data = (redis_GET(key)||'').to_s
-      offset = offset.to_redis_pos_i
+      offset = redis_pos_i offset, 'out of range'
       raise 'out of range' if offset >= 4*1024*1024*1024
       byte = offset / 8
       bit = 0x80 >> offset % 8
@@ -101,7 +100,7 @@ class Redis
 
     def redis_SETEX key, seconds, value
       @database[key] = value
-      @database.expire key, seconds.to_redis_pos_i
+      @database.expire key, redis_pos_i(seconds, 'invalid expire time in SETEX')
       Response::OK
     end
     
@@ -130,15 +129,15 @@ class Redis
     end
     
     def redis_INCR key
-      @database[key] = (@database[key] || 0).to_redis_i + 1
+      @database[key] = redis_i(@database[key] || 0) + 1
     end
 
     def redis_INCRBY key, value
-      @database[key] = (@database[key] || 0).to_redis_i + value.to_redis_i
+      @database[key] = redis_i(@database[key] || 0) + redis_i(value)
     end
 
     def redis_DECRBY key, value
-      @database[key] = (@database[key] || 0).to_redis_i - value.to_redis_i
+      @database[key] = redis_i(@database[key] || 0) - redis_i(value)
     end
       
   end

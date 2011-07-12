@@ -75,25 +75,18 @@ class Redis
           c << self 
           @psubs << channel
         end
-        
         @connection.send_redis ['psubscribe', channel, size]
       end
-      
+
       def unsubscribe channel
         c = (@@channels[channel] || [])
-        if c.include? self
-          c.delete self
-          @subs.delete channel
-        end
+        @subs.delete channel if c.delete self
         @connection.send_redis ['unsubscribe', channel, size]
       end
       
       def punsubscribe channel
         c = (@@pchannels[channel] || [])
-        if c.include? self
-          c.delete self
-          @psubs.delete channel
-        end
+        @psubs.delete channel if c.delete self
         @connection.send_redis ['punsubscribe', channel, size]
       end
       

@@ -46,8 +46,8 @@ class Redis
     end
 
     def redis_SELECT db_index
-      database = Redis.databases[db_index.to_redis_i]
-      raise 'index out of range' unless database
+      database = Redis.databases[redis_i db_index]
+      raise 'invalid DB index' unless database
       @database = database
       Response::OK
     end

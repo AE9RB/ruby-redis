@@ -179,12 +179,4 @@ proc test {name code {okpattern undefined}} {
     }
     flush stdout
 
-    if {$::traceleaks} {
-        set output [exec leaks redis-server]
-        if {![string match {*0 leaks*} $output]} {
-            puts "--- Test \"$name\" leaked! ---"
-            puts $output
-            exit 1
-        }
-    }
 }

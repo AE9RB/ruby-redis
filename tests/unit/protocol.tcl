@@ -57,6 +57,6 @@ start_server {tags {"protocol"}} {
 
     test "Generic wrong number of args" {
         reconnect
-        assert_error "*wrong*arguments*ping*" {r ping x y z}
+        assert_error "*wrong*arguments*" {r ping x y z}
     }
 }

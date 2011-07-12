@@ -36,7 +36,7 @@ class Redis
       
     def redis_HMGET key, *fields
       hash = (@database[key] || {})
-      raise 'wrong type' unless Hash === hash
+      redis_t Hash, hash
       fields.collect do |field|
         hash[field]
       end
@@ -63,8 +63,8 @@ class Redis
     
     def redis_HINCRBY key, field, increment
       hash = @database[key] ||= {}
-      value = (hash[field] ||= 0).to_redis_i
-      value += increment.to_redis_i
+      value = redis_i(hash[field] ||= 0)
+      value += redis_i increment
       hash[field] = value
     end
     

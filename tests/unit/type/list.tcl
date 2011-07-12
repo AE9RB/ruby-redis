@@ -300,7 +300,7 @@ start_server {
             r del blist1 blist2
             r set blist2 nolist
             $rd $pop blist1 blist2 1
-            assert_error "ERR*wrong kind*" {$rd read}
+            assert_error "ERR*" {$rd read}
         }
 
         test "$pop: timeout" {
@@ -568,8 +568,8 @@ start_server {
 
     test {LPOP/RPOP against non list value} {
         r set notalist foo
-        assert_error ERR*kind* {r lpop notalist}
-        assert_error ERR*kind* {r rpop notalist}
+        assert_error ERR* {r lpop notalist}
+        assert_error ERR* {r rpop notalist}
     }
 
     foreach {type num} {ziplist 250 linkedlist 500} {
@@ -696,7 +696,7 @@ start_server {
     }
 
     test {LSET against non existing key} {
-        assert_error ERR*key* {r lset nosuchkey 10 foo}
+        assert_error ERR* {r lset nosuchkey 10 foo}
     }
 
     test {LSET against non list value} {

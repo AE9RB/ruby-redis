@@ -5,6 +5,11 @@ require_relative 'logger'
 
 class Redis
   class Bin
+
+    class StrictConnection < Connection
+      include Strict
+    end
+    
     def self.server
 
       if ARGV==['-v'] or ARGV==['--version']
@@ -20,7 +25,7 @@ class Redis
 
       show_no_config_warning = (ARGV.size == 0)
 
-      config = Redis::Config.new(ARGV.empty? ? [] : ARGF)
+      config = Config.new(ARGV.empty? ? [] : ARGF)
 
       Dir.chdir config[:dir]
 
@@ -43,11 +48,11 @@ class Redis
       EventMachine.run {
   
         (0...config[:databases]).each do |db_index|
-          Redis.databases[db_index] ||= Redis::Database.new
+          Redis.databases[db_index] ||= Database.new
         end
 
         #TODO support changing host and EventMachine::start_unix_domain_server
-        EventMachine::start_server "127.0.0.1", config[:port], Redis::Connection, config[:requirepass]
+        EventMachine::start_server "127.0.0.1", config[:port], StrictConnection, config[:requirepass]
 
         if config[:daemonize]
           raise 'todo'

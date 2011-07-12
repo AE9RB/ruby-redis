@@ -42,6 +42,7 @@ class Redis
   end
   
   class Command
+    # Provide a nice message when attempting sync inside multi_exec
     def synchrony
       raise 'synchrony unavilable here'
     end

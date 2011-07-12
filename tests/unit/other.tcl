@@ -1,16 +1,4 @@
 start_server {tags {"other"}} {
-    # test {SAVE - make sure there are all the types as values} {
-    #     # Wait for a background saving in progress to terminate
-    #     waitForBgsave r
-    #     r lpush mysavelist hello
-    #     r lpush mysavelist world
-    #     r set myemptykey {}
-    #     r set mynormalkey {blablablba}
-    #     r zadd mytestzset 10 a
-    #     r zadd mytestzset 20 b
-    #     r zadd mytestzset 30 c
-    #     r save
-    # } {OK}
 
     tags {"slow"} {
         foreach fuzztype {binary alpha compr} {
@@ -30,88 +18,10 @@ start_server {tags {"other"}} {
         }
     }
 
-    # test {BGSAVE} {
-    #     waitForBgsave r
-    #     r flushdb
-    #     r save
-    #     r set x 10
-    #     r bgsave
-    #     waitForBgsave r
-    #     r debug reload
-    #     r get x
-    # } {10}
-
     test {SELECT an out of range DB} {
         catch {r select 1000000} err
         set _ $err
     } {*invalid*}
-
-    # tags {consistency} {
-    #     if {![catch {package require sha1}]} {
-    #         test {Check consistency of different data types after a reload} {
-    #             r flushdb
-    #             createComplexDataset r 10000
-    #             set dump [csvdump r]
-    #             set sha1 [r debug digest]
-    #             r debug reload
-    #             set sha1_after [r debug digest]
-    #             if {$sha1 eq $sha1_after} {
-    #                 set _ 1
-    #             } else {
-    #                 set newdump [csvdump r]
-    #                 puts "Consistency test failed!"
-    #                 puts "You can inspect the two dumps in /tmp/repldump*.txt"
-    # 
-    #                 set fd [open /tmp/repldump1.txt w]
-    #                 puts $fd $dump
-    #                 close $fd
-    #                 set fd [open /tmp/repldump2.txt w]
-    #                 puts $fd $newdump
-    #                 close $fd
-    # 
-    #                 set _ 0
-    #             }
-    #         } {1}
-    # 
-    #         test {Same dataset digest if saving/reloading as AOF?} {
-    #             r bgrewriteaof
-    #             waitForBgrewriteaof r
-    #             r debug loadaof
-    #             set sha1_after [r debug digest]
-    #             if {$sha1 eq $sha1_after} {
-    #                 set _ 1
-    #             } else {
-    #                 set newdump [csvdump r]
-    #                 puts "Consistency test failed!"
-    #                 puts "You can inspect the two dumps in /tmp/aofdump*.txt"
-    # 
-    #                 set fd [open /tmp/aofdump1.txt w]
-    #                 puts $fd $dump
-    #                 close $fd
-    #                 set fd [open /tmp/aofdump2.txt w]
-    #                 puts $fd $newdump
-    #                 close $fd
-    # 
-    #                 set _ 0
-    #             }
-    #         } {1}
-    #     }
-    # }
-
-    # test {EXPIRES after a reload (snapshot + append only file)} {
-    #     r flushdb
-    #     r set x 10
-    #     r expire x 1000
-    #     r save
-    #     r debug reload
-    #     set ttl [r ttl x]
-    #     set e1 [expr {$ttl > 900 && $ttl <= 1000}]
-    #     r bgrewriteaof
-    #     waitForBgrewriteaof r
-    #     set ttl [r ttl x]
-    #     set e2 [expr {$ttl > 900 && $ttl <= 1000}]
-    #     list $e1 $e2
-    # } {1 1}
 
     test {PIPELINING stresser (also a regression for the old epoll bug)} {
         set fd2 [socket $::host $::port]
@@ -172,7 +82,7 @@ start_server {tags {"other"}} {
         catch {[r multi]} err
         r exec
         set _ $err
-    } {*ERR MULTI*}
+    } {*ERR*MULTI*}
 
     test {MULTI where commands alter argc/argv} {
         r sadd myset a
@@ -181,13 +91,13 @@ start_server {tags {"other"}} {
         list [r exec] [r exists myset]
     } {a 0}
 
-    # test {WATCH inside MULTI is not allowed} {
-    #     set err {}
-    #     r multi
-    #     catch {[r watch x]} err
-    #     r exec
-    #     set _ $err
-    # } {*ERR WATCH*}
+    test {WATCH inside MULTI is not allowed} {
+        set err {}
+        r multi
+        catch {[r watch x]} err
+        r exec
+        set _ $err
+    } {*ERR WATCH*}
 
     test {APPEND basics} {
         list [r append foo bar] [r get foo] \
@@ -234,7 +144,4 @@ start_server {tags {"other"}} {
         lappend aux [r dbsize]
     } {0 0}
 
-    # test {Perform a final SAVE to leave a clean DB on disk} {
-    #     r save
-    # } {OK}
 }

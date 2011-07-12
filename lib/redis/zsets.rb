@@ -66,16 +66,16 @@ class Redis
 	    @keys_reverse
     end
 
-    def range reverse, start ,stop, withscores = false
+    def range reverse, start ,stop, conversions, withscores = false
+      start = conversions.redis_i start
+      stop = conversions.redis_i stop
       array = reverse ? to_a_reverse : to_a
-      start = start.to_redis_i
-      stop = stop.to_redis_i
       start = 0 if start < -size
       return array[start..stop].flatten(1) if withscores
       (array[start..stop]||[]).collect{|i|i.first}
     end
     
-    def range_by_score reverse, min, max, *args
+    def range_by_score reverse, min, max, conversions, *args
       withscores = offset = count = nil
       until args.empty?
         case args.shift.upcase
@@ -94,13 +94,13 @@ class Redis
         min_exclusive = true
         min = min[1..-1]
       end
-      min = min.to_redis_f
+      min = conversions.redis_f min
       max_exclusive = false
       if max[0..0] == '('
         max_exclusive = true
         max = max[1..-1]
       end
-      max = max.to_redis_f
+      max = conversions.redis_f max
       if reverse
         x = min; min = max; max = x
       end
@@ -122,7 +122,7 @@ class Redis
       result
     end
     
-    def self.aggregate database, is_and, destination, numkeys, *args
+    def self.aggregate database, is_and, destination, numkeys, conversions, *args
       numkeys = numkeys.to_i
       aggregate = 'SUM'
       keys = []
@@ -132,7 +132,7 @@ class Redis
         case args.shift.upcase
         when 'WEIGHTS'
           weights = []
-          keys.size.times {weights << args.shift.to_redis_f}
+          keys.size.times {weights << conversions.redis_f(args.shift, 'weight value is not a double')}
         when 'AGGREGATE'
           aggregate = args.shift.upcase
         else
@@ -179,13 +179,13 @@ class Redis
     def redis_ZADD key, score, member
       record = (@database[key] ||= ZSet.new)
       result = !record.include?(member)
-      record.add member, score.to_redis_f
+      record.add member, redis_f(score)
       result
     end
     
     def redis_ZINCRBY key, increment, member
       record = (@database[key] ||= ZSet.new)
-      increment = increment.to_redis_f
+      increment = redis_f increment
       if record.include?(member)
         score = record.score(member) + increment
       else
@@ -224,7 +224,7 @@ class Redis
     
     def redis_ZREMRANGEBYSCORE key, min, max
       record = @database[key] || ZSet.new
-      range = record.range_by_score(false, min, max)
+      range = record.range_by_score(false, min, max, self)
       range.each do |member, score|
         record.delete member
       end
@@ -233,32 +233,36 @@ class Redis
     
     def redis_ZCOUNT key, min, max
       record = @database[key] || ZSet.new
-      record.range_by_score(false, min, max).size
+      record.range_by_score(false, min, max, self).size
     end
 
     def redis_ZREVRANGEBYSCORE key, min, max, *args
       record = @database[key] || ZSet.new
-      record.range_by_score true, min, max, *args
+      record.range_by_score true, min, max, self, *args
     end
     
     def redis_ZRANGEBYSCORE key, min, max, *args
       record = @database[key] || ZSet.new
-      record.range_by_score false, min, max, *args
+      record.range_by_score false, min, max, self, *args
     end
   
     def redis_ZRANGE key, start ,stop, withscores = false
       record = @database[key] || ZSet.new
-      record.range false, start ,stop, withscores
+      start = redis_i start
+      stop = redis_i stop
+      record.range false, start, stop, self, withscores
     end
   
     def redis_ZREVRANGE key, start ,stop, withscores = false
       record = @database[key] || ZSet.new
-      record.range true, start ,stop, withscores
+      start = redis_i start
+      stop = redis_i stop
+      record.range true, start, stop, self, withscores
     end
 
     def redis_ZREMRANGEBYRANK key, start, stop
       record = @database[key] || ZSet.new
-      range = record.range false, start ,stop
+      range = record.range false, start, stop, self
       range.each do |member, score|
         record.delete member
       end
@@ -266,11 +270,11 @@ class Redis
     end
     
     def redis_ZUNIONSTORE destination, numkeys, *args
-      ZSet.aggregate @database, false, destination, numkeys, *args      
+      ZSet.aggregate @database, false, destination, numkeys, self, *args      
     end
 
     def redis_ZINTERSTORE destination, numkeys, *args
-      ZSet.aggregate @database, true, destination, numkeys, *args      
+      ZSet.aggregate @database, true, destination, numkeys, self, *args      
     end
     
   end

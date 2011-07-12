@@ -19,12 +19,14 @@ class Redis
         @connection.close_connection unless msg
       end
     end
-    def callback; super; self; end
-    def errback; super; self; end
-    def timeout *args; super; self; end
+    # EventMachine older than 1.0.0.beta.4 doesn't return self
+    test = EventMachine::DefaultDeferrable.new
+    unless EventMachine::DefaultDeferrable === test.callback{}
+      def callback; super; self; end
+      def errback; super; self; end
+      def timeout *args; super; self; end
+    end
   end
-  
-
   
   def initialize options={}
     if options.has_key?(:hiredis)
@@ -43,7 +45,7 @@ class Redis
   
   def unbind
     @queue.each { |d| d.fail RuntimeError.new 'connection closed' }
-    @queue = []
+    @queue.clear
   end
   
   # Pub/Sub works by sending all orphaned messages to this callback.

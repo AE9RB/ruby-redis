@@ -35,8 +35,8 @@ class Redis
     end
     
     def redis_LRANGE key, first, last
-      first = first.to_redis_i
-      last = last.to_redis_i
+      first = redis_i first
+      last = redis_i last
       list = @database[key] || []
       first = 0 if first < -list.size
       list[first..last]
@@ -47,7 +47,7 @@ class Redis
     end
     
     def redis_BRPOP *args
-      timeout = args.pop.to_redis_pos_i
+      timeout = redis_pos_i args.pop
       args.each do |key|
         list = @database[key]
         if list and list.size > 0
@@ -63,7 +63,7 @@ class Redis
     end
     
     def redis_BLPOP *args
-      timeout = args.pop.to_redis_pos_i
+      timeout = redis_pos_i args.pop
       args.each do |key|
         list = @database[key]
         if list and list.size > 0
@@ -78,15 +78,11 @@ class Redis
       df
     end
 
-    #TODO The redis tests require a specific error so we can't
-    # let Ruby do the error handling.  Make better tests so we
-    # kill the rampant raise 'wrong kind' ...
-    
     def redis_RPOPLPUSH source, destination
       source_list = @database[source]
       return nil unless source_list
-      raise 'wrong kind' unless Array === source_list
-      raise 'wrong kind' unless !@database[destination] or Array === @database[destination]
+      redis_t Array, source_list
+      redis_t NilClass, Array, @database[destination]
       value = source_list.pop
       @database.delete source if source_list.empty?
       redis_LPUSH destination, value
@@ -96,14 +92,14 @@ class Redis
     def redis_BRPOPLPUSH source, destination, timeout
       source_list = @database[source]
       if source_list
-        raise 'wrong kind' unless Array === source_list
+        redis_t Array, source_list
         value = source_list.pop
         @database.delete source if source_list.empty?
         redis_LPUSH destination, value
         return value
       end
-      raise 'wrong kind' unless !@database[destination] or Array === @database[destination]
-      df = DeferredPop.new @database, timeout.to_redis_pos_i, source
+      redis_t NilClass, Array, @database[destination]
+      df = DeferredPop.new @database, redis_pos_i(timeout), source
       df.errback {send_redis Response::NIL_MB}
       df.callback do |key, value|
         redis_LPUSH destination, value
@@ -114,7 +110,7 @@ class Redis
     
     def redis_RPUSH key, value
       list = @database[key]
-      raise 'wrong kind' unless !list or Array === list
+      redis_t NilClass, Array, list
       (@database.blocked_pops[key] ||= []).each do |deferrable|
         deferrable.succeed key, value
         return 0
@@ -125,7 +121,7 @@ class Redis
 
     def redis_LPUSH key, value
       list = @database[key]
-      raise 'wrong kind' unless !list or Array === list
+      redis_t NilClass, Array, list
       (@database.blocked_pops[key] ||= []).each do |deferrable|
         deferrable.succeed key, value
         return 0
@@ -181,26 +177,26 @@ class Redis
 
     def redis_LLEN key
       list = @database[key] || []
-      raise 'wrong kind' unless Array === list
+      redis_t Array, list
       list.size
     end
 
     def redis_LINDEX key, index
       list = @database[key] || []
-      raise 'wrong kind' unless Array === list
-      list[index.to_redis_i]
+      redis_t Array, list
+      list[redis_i index]
     end
 
     def redis_LSET key, index, value
       list = @database[key] || []
-      raise 'key value wrong kind' unless Array === list
-      raise 'out of range' unless list.size > index.to_redis_i.abs
-      list[index.to_redis_i] = value
+      redis_t Array, list
+      raise 'out of range' unless list.size > redis_i(index).abs
+      list[redis_i index] = value
     end
     
     def redis_LREM key, count, value
       list = @database[key] || []
-      count = count.to_redis_i
+      count = redis_i count
       size = list.size
       if count == 0
         list.delete value

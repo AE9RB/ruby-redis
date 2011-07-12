@@ -32,19 +32,6 @@ proc kill_server config {
     if {![is_alive $config]} { return }
     set pid [dict get $config pid]
 
-    # check for leaks
-    if {![dict exists $config "skipleaks"]} {
-        catch {
-            if {[string match {*Darwin*} [exec uname -a]]} {
-                tags {"leaks"} {
-                    test "Check for memory leaks (pid $pid)" {
-                        exec leaks $pid
-                    } {*0 leaks*}
-                }
-            }
-        }
-    }
-
     # kill server and wait for the process to be totally exited
     while {[is_alive $config]} {
         if {[incr wait 10] % 1000 == 0} {
