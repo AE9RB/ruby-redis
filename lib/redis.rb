@@ -24,6 +24,81 @@ class Redis
     def timeout *args; super; self; end
   end
   
+
+  
+  def initialize options={}
+    if options.has_key?(:hiredis)
+      use_hiredis = options[:hiredis]
+    else
+      use_hiredis = @@hiredis_default
+    end
+    if use_hiredis
+      @buftok = HiredisReader.new
+    else
+      @buftok = BufferedTokenizer.new
+    end
+    @queue = []
+    @pubsub_callback = proc{}
+  end
+  
+  def unbind
+    @queue.each { |d| d.fail RuntimeError.new 'connection closed' }
+    @queue = []
+  end
+  
+  # Pub/Sub works by sending all orphaned messages to this callback.
+  # It is simple and fast but not tolerant to programming errors.
+  def pubsub_callback &block
+    @pubsub_callback = block
+  end
+  
+  def receive_data data
+    @buftok.extract(data) do |data|
+      deferrable = @queue.shift
+      if deferrable
+        if Exception === data
+          deferrable.fail data
+        else
+          deferrable.succeed data
+        end
+      else
+        @pubsub_callback.call data
+      end
+    end
+  rescue Exception => e
+    @queue.shift.fail e unless @queue.empty?
+    close_connection
+  end
+  
+  def method_missing method, *args, &block
+    deferrable = Command.new self
+    if [:subscribe, :psubscribe, :unsubscribe, :punsubscribe].include? method
+      deferrable.callback do |data|
+        deferrable.succeed nil
+        @pubsub_callback.call data
+      end
+    end
+    if transform = self.class.transforms[method.downcase]
+      deferrable.callback do |data|
+        begin
+          deferrable.succeed transform.call data
+        rescue Exception => e
+          deferrable.fail e
+        end
+      end
+    end
+    deferrable.callback &block if block
+    @queue.push deferrable
+    send_redis args.reduce([method]){ |arr, arg|
+      if Hash === arg
+        arr += arg.to_a.flatten 1
+      else
+        arr << arg
+      end
+    }
+    deferrable
+  end
+  
   # Yielded by multi_exec to proxy and collect commands
   class Multi < Command
     include Enumerable
@@ -84,62 +159,6 @@ class Redis
         redis_exec.succeed normalized_results
       end
     end
-  end
-  
-  def initialize options={}
-    
-    if options.has_key?(:hiredis)
-      use_hiredis = options[:hiredis]
-    else
-      use_hiredis = @@hiredis_default
-    end
-    if options[:hiredis]
-      @buftok = HiredisReader.new
-    else
-      @buftok = BufferedTokenizer.new
-    end
-    @queue = []
-  end
-  
-  def unbind
-    @queue.each { |d| d.fail RuntimeError.new 'connection closed' }
-    @queue = []
-  end
-  
-  def receive_data data
-    @buftok.extract(data) do |data|
-      if Exception === data
-        @queue.shift.fail data
-      else
-        @queue.shift.succeed data
-      end
-    end
-  rescue Exception => e
-    @queue.shift.fail e unless @queue.empty?
-    close_connection
-  end
-  
-  def method_missing method, *args, &block
-    deferrable = Command.new self
-    if transform = self.class.transforms[method.downcase]
-      deferrable.callback do |data|
-        begin
-          deferrable.succeed transform.call data
-        rescue Exception => e
-          deferrable.fail e
-        end
-      end
-    end
-    deferrable.callback &block if block
-    @queue.push deferrable
-    send_redis args.reduce([method]){ |arr, arg|
-      if Hash === arg
-        arr += arg.to_a.flatten 1
-      else
-        arr << arg
-      end
-    }
-    deferrable
   end
   
   # Some data is best transformed into a Ruby type.  You can set up global
