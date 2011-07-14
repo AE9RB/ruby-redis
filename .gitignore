@@ -1,3 +1,4 @@
 .DS_Store
 ruby-redis-*.gem
 Gemfile.lock
+*.rbc

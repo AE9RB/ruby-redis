@@ -51,7 +51,7 @@ start_server {tags {"zset"}} {
         assert_equal {} [r zrange ztmp 1 -5]
 
         # withscores
-        assert_equal {a 1 b 2 c 3 d 4} [r zrange ztmp 0 -1 withscores]
+        assert_equal {a 1.0 b 2.0 c 3.0 d 4.0} [r zrange ztmp 0 -1 withscores]
     }
 
     test "ZREVRANGE basics" {
@@ -81,7 +81,7 @@ start_server {tags {"zset"}} {
         assert_equal {} [r zrevrange ztmp 1 -5]
 
         # withscores
-        assert_equal {d 4 c 3 b 2 a 1} [r zrevrange ztmp 0 -1 withscores]
+        assert_equal {d 4.0 c 3.0 b 2.0 a 1.0} [r zrevrange ztmp 0 -1 withscores]
     }
 
     test {ZRANK basics} {
@@ -186,7 +186,7 @@ start_server {tags {"zset"}} {
         r del zset
         r zincrby zset 1 foo
         list [r zrange zset 0 -1] [r zscore zset foo]
-    } {foo 1}
+    } {foo 1.0}
 
     test {ZINCRBY - increment and decrement} {
         r zincrby zset 2 foo
@@ -197,7 +197,7 @@ start_server {tags {"zset"}} {
         r zincrby zset -5 bar
         set v2 [r zrange zset 0 -1]
         list $v1 $v2 [r zscore zset foo] [r zscore zset bar]
-    } {{bar foo} {foo bar} -2 6}
+    } {{bar foo} {foo bar} -2.0 6.0}
 
     proc create_default_zset {} {
         create_zset zset {-inf a 1 b 2 c 3 d 4 e 5 f +inf g}
@@ -231,8 +231,8 @@ start_server {tags {"zset"}} {
 
     test "ZRANGEBYSCORE with WITHSCORES" {
         create_default_zset
-        assert_equal {b 1 c 2 d 3} [r zrangebyscore zset 0 3 withscores]
-        assert_equal {d 3 c 2 b 1} [r zrevrangebyscore zset 3 0 withscores]
+        assert_equal {b 1.0 c 2.0 d 3.0} [r zrangebyscore zset 0 3 withscores]
+        assert_equal {d 3.0 c 2.0 b 1.0} [r zrevrangebyscore zset 3 0 withscores]
     }
 
     test "ZRANGEBYSCORE with LIMIT" {
@@ -249,8 +249,8 @@ start_server {tags {"zset"}} {
 
     test "ZRANGEBYSCORE with LIMIT and WITHSCORES" {
         create_default_zset
-        assert_equal {e 4 f 5} [r zrangebyscore zset 2 5 LIMIT 2 3 WITHSCORES]
-        assert_equal {d 3 c 2} [r zrevrangebyscore zset 5 2 LIMIT 2 3 WITHSCORES]
+        assert_equal {e 4.0 f 5.0} [r zrangebyscore zset 2 5 LIMIT 2 3 WITHSCORES]
+        assert_equal {d 3.0 c 2.0} [r zrevrangebyscore zset 5 2 LIMIT 2 3 WITHSCORES]
     }
 
     test "ZRANGEBYSCORE with non-value min or max" {
@@ -439,11 +439,11 @@ start_server {tags {"zset"}} {
         r zadd zsetb 2 c
         r zadd zsetb 3 d
         list [r zunionstore zsetc 2 zseta zsetb] [r zrange zsetc 0 -1 withscores]
-    } {4 {a 1 b 3 d 3 c 5}}
+    } {4 {a 1.0 b 3.0 d 3.0 c 5.0}}
 
     test {ZUNIONSTORE with weights} {
         list [r zunionstore zsetc 2 zseta zsetb weights 2 3] [r zrange zsetc 0 -1 withscores]
-    } {4 {a 2 b 7 d 9 c 12}}
+    } {4 {a 2.0 b 7.0 d 9.0 c 12.0}}
 
 	test {ZUNIONSTORE with a regular set and weights} {
 		r del seta
@@ -451,23 +451,23 @@ start_server {tags {"zset"}} {
 		r sadd seta b
 		r sadd seta c
         list [r zunionstore zsetc 2 seta zsetb weights 2 3] [r zrange zsetc 0 -1 withscores]
-	} {4 {a 2 b 5 c 8 d 9}}
+	} {4 {a 2.0 b 5.0 c 8.0 d 9.0}}
 
     test {ZUNIONSTORE with AGGREGATE MIN} {
         list [r zunionstore zsetc 2 zseta zsetb aggregate min] [r zrange zsetc 0 -1 withscores]
-    } {4 {a 1 b 1 c 2 d 3}}
+    } {4 {a 1.0 b 1.0 c 2.0 d 3.0}}
 
     test {ZUNIONSTORE with AGGREGATE MAX} {
         list [r zunionstore zsetc 2 zseta zsetb aggregate max] [r zrange zsetc 0 -1 withscores]
-    } {4 {a 1 b 2 c 3 d 3}}
+    } {4 {a 1.0 b 2.0 c 3.0 d 3.0}}
 
     test {ZINTERSTORE basics} {
         list [r zinterstore zsetc 2 zseta zsetb] [r zrange zsetc 0 -1 withscores]
-    } {2 {b 3 c 5}}
+    } {2 {b 3.0 c 5.0}}
 
     test {ZINTERSTORE with weights} {
         list [r zinterstore zsetc 2 zseta zsetb weights 2 3] [r zrange zsetc 0 -1 withscores]
-    } {2 {b 7 c 12}}
+    } {2 {b 7.0 c 12.0}}
 
 	test {ZINTERSTORE with a regular set and weights} {
 		r del seta
@@ -475,15 +475,15 @@ start_server {tags {"zset"}} {
 		r sadd seta b
 		r sadd seta c
         list [r zinterstore zsetc 2 seta zsetb weights 2 3] [r zrange zsetc 0 -1 withscores]
-	} {2 {b 5 c 8}}
+	} {2 {b 5.0 c 8.0}}
 
     test {ZINTERSTORE with AGGREGATE MIN} {
         list [r zinterstore zsetc 2 zseta zsetb aggregate min] [r zrange zsetc 0 -1 withscores]
-    } {2 {b 1 c 2}}
+    } {2 {b 1.0 c 2.0}}
 
     test {ZINTERSTORE with AGGREGATE MAX} {
         list [r zinterstore zsetc 2 zseta zsetb aggregate max] [r zrange zsetc 0 -1 withscores]
-    } {2 {b 2 c 3}}
+    } {2 {b 2.0 c 3.0}}
 
     test {ZINTERSTORE regression with two sets, intset+hashtable} {
         r del seta setb setc

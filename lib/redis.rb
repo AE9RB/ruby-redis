@@ -7,6 +7,7 @@ unless Kernel.respond_to?(:require_relative)
   end
 end
 
+require 'rubygems'
 require 'eventmachine'
 class Redis < EventMachine::Connection ; end
 
@@ -89,7 +90,7 @@ class Redis
         @pubsub_callback.call data
       end
     end
-    if transform = self.class.transforms[method.to_s.downcase]
+    if transform = self.class.transforms[method]
       deferrable.callback do |data|
         begin
           deferrable.succeed transform.call data

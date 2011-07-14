@@ -1,4 +1,4 @@
-require_relative '../redis'
+require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
   
@@ -29,24 +29,15 @@ class Redis
           collect << value
           collect << "\r\n"
         end
-      elsif Enumerable === data
+      elsif Enumerable === data and !(String === data)
         collect << "*#{data.size}\r\n"
         data.each do |element|
-          if Float === element
-            element = element.to_s.gsub /\.0$/, ''
-          else
-            element = element.to_s
-          end
+          element = element.to_s
           collect << "$#{element.bytesize}\r\n"
           collect << element
           collect << "\r\n"
         end
       else
-        if Float === data
-          data = data.to_s.gsub /\.0$/, ''
-        else
-          data = data.to_s
-        end
         data = data.to_s
         collect << "$#{data.bytesize}\r\n"
         collect << data

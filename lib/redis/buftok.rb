@@ -1,4 +1,4 @@
-require_relative '../redis'
+require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
   
@@ -16,7 +16,7 @@ class Redis
       flush
     end
     
-    def extract data  
+    def extract data, &block # keep block param for rubinius
       unshift_split if @split
       push data
       frame do |str|
@@ -100,7 +100,7 @@ class Redis
           else
             if @remaining > 0
               flush
-              raise "expected '$', got '#{line[0]}'" 
+              raise "expected '$', got '#{line[0].chr}'" 
             end
             parts = line.split(' ')
             @remaining = parts.size

@@ -1,4 +1,4 @@
-require_relative '../redis'
+require File.expand_path '../redis', File.dirname(__FILE__)
 require_relative 'config'
 require_relative 'connection'
 require_relative 'logger'
@@ -60,7 +60,7 @@ class Redis
           # FILE *fp = fopen(server.pidfile,"w");
           # if (fp) { fprintf(fp,"%d\n",(int)getpid()); fclose(fp); }
         end
-
+        
         Redis.logger.notice "Server started, Ruby Redis version %s" % Redis::VERSION
         Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
 

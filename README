@@ -3,11 +3,22 @@ proxy for Redis.  Special attention was paid to performance of the basic
 Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers/proxies/routers.
 
+Performance considerations:
+
+Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8 is slower, but
+usable.  The client under JRuby should be faster than any alternative.
+The server under JRuby performs poorly.  Rubinius 1.2 and 2.0 did not
+perform well in any tests.
+
+If the hiredis gem is compatible with your platform, you can use it
+for the client instead of buftok.rb.
+
+
 Client benchmark:
 rr+hiredis  : Ruby Redis with hiredis enabled, Ruby 1.9.2
 ruby-redis  : Ruby Redis on Ruby 1.9.2
 rr+jruby16  : Ruby Redis on JRuby 1.6.3
-rr+rubinius : Ruby Redis on Rubinius head 2011-JUL-13
+rr+rubinius : Ruby Redis on Rubinius 1.2 (2.0 is even slower)
 em-hiredis  : on Ruby 1.9.2
 em-redis    : on Ruby 1.9.2
 
