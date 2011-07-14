@@ -1,3 +1,12 @@
+# for Ruby older than 1.9
+unless Kernel.respond_to?(:require_relative)
+  module Kernel
+    def require_relative(path)
+      require File.join(File.dirname(caller[0]), path.to_str)
+    end
+  end
+end
+
 require 'eventmachine'
 class Redis < EventMachine::Connection ; end
 
@@ -80,7 +89,7 @@ class Redis
         @pubsub_callback.call data
       end
     end
-    if transform = self.class.transforms[method.downcase]
+    if transform = self.class.transforms[method.to_s.downcase]
       deferrable.callback do |data|
         begin
           deferrable.succeed transform.call data

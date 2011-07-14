@@ -4,26 +4,33 @@ Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers/proxies/routers.
 
 Client benchmark:
-Ruby Redis with hiredis enabled (rr+hiredis) performs about the same
-as em-hiredis. The slight difference is some parameter handling I'm
-not sure will be changed.  The pure Ruby implementation of the wire
-protocol (ruby-redis) is only slightly slower. My laptop with Ruby 1.9
-pipelining get operations to a C Redis 2.2 server:
+rr+hiredis  : Ruby Redis with hiredis enabled, Ruby 1.9.2
+ruby-redis  : Ruby Redis on Ruby 1.9.2
+rr+jruby16  : Ruby Redis on JRuby 1.6.3
+rr+rubinius : Ruby Redis on Rubinius head 2011-JUL-13
+em-hiredis  : on Ruby 1.9.2
+em-redis    : on Ruby 1.9.2
 
              gets size       user     system      total        real
              
 rr+hiredis  75000  20b   1.760000   0.090000   1.850000 (  1.873600)
 ruby-redis  75000  20b   2.250000   0.110000   2.360000 (  2.432902)
+rr+jruby16  75000  20b   2.869000   0.000000   2.869000 (  2.869000)
+rr+rubinius 75000  20b   4.393039   0.091899   4.484938 (  5.023466)
 em-hiredis  75000  20b   1.550000   0.090000   1.640000 (  1.669631)
 em-redis    75000  20b   2.570000   0.790000   3.360000 (  3.719082)
 
 rr+hiredis  10000  64k   2.930000   0.400000   3.330000 (  3.456874)
 ruby-redis  10000  64k   4.930000   0.540000   5.470000 (  5.588033)
+rr+jruby16  10000  64k   6.588000   0.000000   6.588000 (  6.588000)
+rr+rubinius 10000  64k  15.951343   1.381539  17.332882 ( 17.970684)
 em-hiredis  10000  64k   2.770000   0.390000   3.160000 (  3.264862)
 em-redis    10000  64k   4.170000   1.760000   5.930000 (  6.123727)
 
 rr+hiredis    250   1m   0.730000   0.150000   0.880000 (  0.938491)
 ruby-redis    250   1m   0.760000   0.190000   0.950000 (  0.974382)
+rr+jruby16    250   1m   1.571000   0.000000   1.571000 (  1.571000)
+rr+rubinius   250   1m   4.845378   0.372637   5.218015 (  5.762100)
 em-hiredis    250   1m   0.730000   0.160000   0.890000 (  0.906150)
 em-redis      250   1m  11.350000  10.720000  22.070000 ( 22.677349)
 
