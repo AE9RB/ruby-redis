@@ -53,7 +53,7 @@ class Redis
         "redis_git_dirty:%d\r\n",
       ].join % [
         Redis::VERSION,
-        "Ruby #{RUBY_VERSION}",
+        "Ruby",
         1,
       ]
     end

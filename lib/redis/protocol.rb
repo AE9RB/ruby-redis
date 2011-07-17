@@ -1,7 +1,7 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
 require 'eventmachine'
-require_relative 'buftok'
-require_relative 'send'
+require_relative 'reader'
+require_relative 'sender'
 
 class Redis
   
@@ -52,14 +52,14 @@ class Redis
   
   module Protocol
     
-    include Send
+    include Sender
 
     # Typically raised by redis_QUIT
     class CloseConnection < Exception
     end
   
     def initialize *args
-      @buftok = BufferedTokenizer.new
+      @reader = Reader.new
       @multi = nil
       @deferred = nil
       @watcher = nil
@@ -141,15 +141,16 @@ class Redis
       send "redis_#{command.upcase}", *arguments
     rescue Exception => e
       raise e if CloseConnection === e
-      # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+      e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       Response["-ERR #{e.class.name}: #{e.message}\r\n" ]
     end
   
     # Process incoming redis protocol
     def receive_data data
-      @buftok.extract(data) do |strings|
-        # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
+      @reader.feed data
+      until (strings = @reader.gets) == false
+        Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
         if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
           @multi << strings
           send_redis Response::QUEUED

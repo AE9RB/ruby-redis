@@ -1,8 +1,8 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
-  
-  module Send
+
+  module Sender
     
     def send_redis data
       collect = []

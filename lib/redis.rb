@@ -7,18 +7,16 @@ unless Kernel.respond_to?(:require_relative)
   end
 end
 
-require 'rubygems'
 require 'eventmachine'
 class Redis < EventMachine::Connection ; end
 
 require_relative 'redis/version'
-require_relative 'redis/buftok'
-require_relative 'redis/hiredis'
-require_relative 'redis/send'
+require_relative 'redis/reader'
+require_relative 'redis/sender'
 
 class Redis
   
-  include Send
+  include Sender
   
   class Command
     include EventMachine::Deferrable
@@ -39,15 +37,10 @@ class Redis
   end
   
   def initialize options={}
-    if options.has_key?(:hiredis)
-      use_hiredis = options[:hiredis]
+    if defined? Hiredis and defined? Hiredis::Reader
+      @reader = Hiredis::Reader.new
     else
-      use_hiredis = @@hiredis_default
-    end
-    if use_hiredis
-      @buftok = HiredisReader.new
-    else
-      @buftok = BufferedTokenizer.new
+      @reader = Reader.new
     end
     @queue = []
     @pubsub_callback = proc{}
@@ -60,12 +53,14 @@ class Redis
   
   # Pub/Sub works by sending all orphaned messages to this callback.
   # It is simple and fast but not tolerant to programming errors.
+  # Subclass Redis and/or create a defensive layer if you need to.
   def pubsub_callback &block
     @pubsub_callback = block
   end
   
   def receive_data data
-    @buftok.extract(data) do |data|
+    @reader.feed data
+    until (data = @reader.gets) == false
       deferrable = @queue.shift
       if deferrable
         if Exception === data

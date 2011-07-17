@@ -4,7 +4,7 @@ class Redis
   module Keys
     
     def redis_RANDOMKEY
-      return Response::NIL if @database.empty?
+      return nil if @database.empty?
       @database.random_key
     end
   

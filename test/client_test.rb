@@ -78,7 +78,7 @@ describe 'Redis Client' do
     it 'sends array from BLPOP on success' do
       result = error = nil
       synchrony do |redis|
-        redis.synchrony.del('mylist')
+        redis.del('mylist')
         redis.synchrony.rpush('mylist', 'lunch').must_equal 1
         redis.blpop('mylist', 0).callback do |msg|
           result = msg

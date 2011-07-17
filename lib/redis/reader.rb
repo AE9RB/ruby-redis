@@ -2,8 +2,8 @@ require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
   
-  # This is almost as fast as HiredisReader
-  class BufferedTokenizer < Array
+    # This is almost as fast as hiredis/reader plus it supports servers
+  class Reader < Array
 
     # Minimize the amount of memory copying. The primary
     # performance trick is to String#split and work with that.
@@ -16,9 +16,15 @@ class Redis
       flush
     end
     
-    def extract data, &block # keep block param for rubinius
+    def feed data
       unshift_split if @split
       push data
+    end
+    
+    # def gets
+    # end
+    # 
+    def gets #data, &block # keep block param for rubinius
       frame do |str|
         @elements << str
         if @remaining > 0
@@ -30,15 +36,17 @@ class Redis
             @remaining -= 1
           end
           next unless @remaining == 0
-          yield @elements
+          @completed << @elements
         elsif @remaining < 0
-          yield nil
+          @completed << nil
         elsif !@elements.empty?
-          yield @elements[0]
+          @completed << @elements[0]
         end
         @elements = []
         @remaining = 0
       end
+      return false if @completed.empty?
+      @completed.shift
     end
     
     private
@@ -50,6 +58,7 @@ class Redis
       @remaining = 0
       @elements = []
       @stack = []
+      @completed = []
       clear
     end
     
@@ -62,12 +71,12 @@ class Redis
     def frame
       while true
         if @binary_size
-          s = read @binary_size
+          s = read_binary @binary_size
           break unless s
           @binary_size = nil
           yield s
         else
-          line = gets
+          line = read_line
           break unless line
           case line[0..0]
           when '-'
@@ -111,7 +120,7 @@ class Redis
     end
     
     # Read a binary redis token, nil if none available
-    def read length
+    def read_binary length
       if @split
         if @split.first.size >= length
           result = @split.shift[0...length]
@@ -133,14 +142,14 @@ class Redis
         end
       end
       # eat newline
-      return nil unless gets
+      return nil unless read_line
       result = @pending.join
       @pending = nil
       result
     end
 
     # Read a newline terminated redis token, nil if none available
-    def gets
+    def read_line
       unless @split
         @split = join.split "\n", -1
         clear

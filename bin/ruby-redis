@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
 begin
-  require File.expand_path '../lib/redis/bin', File.dirname(__FILE__)
+  require 'rubygems'
 rescue LoadError
-  begin
-    require 'rubygems'
-  rescue LoadError
-  end
+end
+direct_bin_filename = File.expand_path '../lib/redis/bin', File.dirname(__FILE__)
+if File.exist? direct_bin_filename + '.rb'
+  require direct_bin_filename
+else
   require 'redis/bin'
 end
 Redis::Bin.server
