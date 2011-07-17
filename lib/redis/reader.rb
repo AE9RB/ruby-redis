@@ -2,7 +2,7 @@ require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
   
-    # This is almost as fast as hiredis/reader plus it supports servers
+  # This is almost as fast as hiredis/reader plus it supports servers
   class Reader < Array
 
     # Minimize the amount of memory copying. The primary
@@ -21,10 +21,7 @@ class Redis
       push data
     end
     
-    # def gets
-    # end
-    # 
-    def gets #data, &block # keep block param for rubinius
+    def gets
       frame do |str|
         @elements << str
         if @remaining > 0

@@ -1,12 +1,11 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
-require 'eventmachine'
 
 class Redis
   
   module PubSub
     
     class Subscription
-      include EventMachine::Deferrable
+      include Deferrable
       
       @@channels ||= {}
       @@pchannels ||= {}

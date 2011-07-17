@@ -55,7 +55,7 @@ class Redis
   def self.synchrony blk=nil, tail=nil, &block
     blk ||= block
     context = Proc.new { Fiber.new { blk.call }.resume }
-    EventMachine.run(context, tail)
+    EventMachine.run &context
   end
   
   def synchrony

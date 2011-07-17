@@ -1,12 +1,10 @@
 This project was started because I needed an authenticating and routable
 proxy for Redis.  Special attention was paid to performance of the basic
-Redis protocol.  All of the magic is in buftok.rb.  This same parser can
+Redis protocol.  All of the magic is in reader.rb.  This same parser can
 be used for both clients and servers.
 
 Which client gem should you use, 'redis' or 'ruby-redis'?  Use 'ruby-redis'
-for EventMachine projects, and 'redis' if you're not using EventMachine.
-Use 'ruby-redis' when you need a high-performance replace for hiredis/reader
-in pure Ruby.
+for cool.io projects, and 'redis' if you're not using cool.io.
 
 Performance considerations:
 
@@ -31,7 +29,7 @@ Client Usage:
 # To enable the optional hiredis reader, it only need be loaded
 require 'hiredis/reader'
 
-# The only gem dependency is EventMachine unless you enable hiredis
+# The only gem dependency is cool.io unless you enable hiredis
 require 'redis'
 EM.run {
   redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
@@ -41,7 +39,7 @@ EM.run {
     when 'psubscribe' ...
   end
   # All commands implemented uniformly with method_missing
-  # Returns instance of Redis::Command < EventMachine::Deferrable 
+  # Returns instance of Redis::Command < Deferrable 
   # Pipelining is implicit
   redis.set :pi, 3.14159
   redis.get('pi') do |result|

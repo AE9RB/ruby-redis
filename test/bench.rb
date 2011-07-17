@@ -1,5 +1,6 @@
 require File.join(File.dirname(__FILE__), '../lib/redis')
 require 'em-hiredis'
+require 'hiredis/reader'
 require 'benchmark'
 
 def runit kind, qty, data

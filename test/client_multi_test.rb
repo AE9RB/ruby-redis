@@ -104,7 +104,7 @@ describe 'Redis Multi/Exec' do
       end
       full_results.must_equal nil
     end
-
-  end
   
+  end
+   
 end

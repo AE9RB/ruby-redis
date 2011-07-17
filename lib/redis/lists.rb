@@ -1,12 +1,11 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
-require 'eventmachine'
 
 class Redis
   
   module Lists
     
     class DeferredPop
-      include EventMachine::Deferrable
+      include Deferrable
       
       attr_reader :bound
       

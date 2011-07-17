@@ -1,4 +1,4 @@
 source 'http://rubygems.org'
 gem 'minitest', :group => :test
-gem 'eventmachine'
+gem 'cool.io'
 # gem 'fastlz'

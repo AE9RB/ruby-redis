@@ -11,8 +11,6 @@ require_relative 'hashes'
 require_relative 'pubsub'
 require_relative 'strict'
 
-require 'eventmachine'
-
 class Redis
   class Connection < EventMachine::Connection
     

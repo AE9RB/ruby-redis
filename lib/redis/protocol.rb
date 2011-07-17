@@ -1,5 +1,4 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
-require 'eventmachine'
 require_relative 'reader'
 require_relative 'sender'
 
@@ -17,7 +16,7 @@ class Redis
   end
 
   class Watcher
-    include EventMachine::Deferrable
+    include Deferrable
     
     attr_reader :bound
     
@@ -73,7 +72,7 @@ class Redis
     
     # Companion to send_data.
     def send_redis data
-      if EventMachine::Deferrable === data
+      if Deferrable === data
         @deferred.unbind if @deferred and @deferred != data
         @deferred = data
       elsif Response === data
@@ -126,7 +125,7 @@ class Redis
       response = []
       @multi.each do |strings| 
         result = call_redis *strings
-        if EventMachine::Deferrable === result
+        if Deferrable === result
           result.unbind
           send_redis nil
         else
@@ -150,7 +149,7 @@ class Redis
     def receive_data data
       @reader.feed data
       until (strings = @reader.gets) == false
-        Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
+        # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
         if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
           @multi << strings
           send_redis Response::QUEUED
