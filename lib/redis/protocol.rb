@@ -141,8 +141,8 @@ class Redis
       send "redis_#{command.upcase}", *arguments
     rescue Exception => e
       raise e if CloseConnection === e
-      Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-      e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       Response["-ERR #{e.class.name}: #{e.message}\r\n" ]
     end
   
@@ -150,7 +150,7 @@ class Redis
     def receive_data data
       @reader.feed data
       until (strings = @reader.gets) == false
-        Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
+        # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
         if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
           @multi << strings
           send_redis Response::QUEUED

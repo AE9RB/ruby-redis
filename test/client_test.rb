@@ -61,7 +61,7 @@ describe 'Redis Client' do
   describe 'Redis Evented Client' do
     
     it 'sends nil from BRPOPLPUSH on failure' do
-      result = error = nil
+      result = error = false
       synchrony do |redis|
         redis.del('mylist')
         redis.brpoplpush('mylist', 'mylist2', 1).callback do |msg|
@@ -76,7 +76,7 @@ describe 'Redis Client' do
     end
 
     it 'sends array from BLPOP on success' do
-      result = error = nil
+      result = error = false
       synchrony do |redis|
         redis.del('mylist')
         redis.synchrony.rpush('mylist', 'lunch').must_equal 1

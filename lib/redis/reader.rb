@@ -2,7 +2,7 @@ require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
   
-    # This is almost as fast as hiredis/reader plus it supports servers
+  # This is almost as fast as hiredis/reader plus it supports servers
   class Reader < Array
 
     # Minimize the amount of memory copying. The primary
@@ -16,34 +16,31 @@ class Redis
       flush
     end
     
-    def feed data
-      unshift_split if @split
-      push data
-    end
+    alias :feed :push
     
-    # def gets
-    # end
-    # 
-    def gets #data, &block # keep block param for rubinius
-      frame do |str|
-        @elements << str
-        if @remaining > 0
-          @remaining -= 1
-          if @remaining == 0 and !@stack.empty?
-            elements = @elements
-            @elements, @remaining = @stack.pop
-            @elements << elements
+    def gets
+      if @completed.empty?
+        unshift_split if @split
+        frame do |str|
+          @elements << str
+          if @remaining > 0
             @remaining -= 1
+            if @remaining == 0 and !@stack.empty?
+              elements = @elements
+              @elements, @remaining = @stack.pop
+              @elements << elements
+              @remaining -= 1
+            end
+            next unless @remaining == 0
+            @completed << @elements
+          elsif @remaining < 0
+            @completed << nil
+          elsif !@elements.empty?
+            @completed << @elements[0]
           end
-          next unless @remaining == 0
-          @completed << @elements
-        elsif @remaining < 0
-          @completed << nil
-        elsif !@elements.empty?
-          @completed << @elements[0]
+          @elements = []
+          @remaining = 0
         end
-        @elements = []
-        @remaining = 0
       end
       return false if @completed.empty?
       @completed.shift

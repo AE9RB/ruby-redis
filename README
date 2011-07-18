@@ -3,11 +3,6 @@ proxy for Redis.  Special attention was paid to performance of the basic
 Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers.
 
-Which client gem should you use, 'redis' or 'ruby-redis'?  Use 'ruby-redis'
-for EventMachine projects, and 'redis' if you're not using EventMachine.
-Use 'ruby-redis' when you need a high-performance replace for hiredis/reader
-in pure Ruby.
-
 Performance considerations:
 
 Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8 is slower, but
@@ -25,6 +20,10 @@ second performing GET and SET commands.  The client easily hits 40k
 per second.  An amazon c1.medium 32-bit instance, using just one
 core (2.5 compute units), can handle more than 50Mbps.
 
+Server Usage:
+
+# Runs a server that looks and feels like the C redis-server
+bin/ruby-redis
 
 Client Usage:
 
@@ -66,8 +65,8 @@ Redis.synchrony {
     redis.watch 'mykey' # never fails, use pipeline
     x = sync.get('mykey').to_i
     reply = sync.multi_exec do |multi|
-      # multi is pipelined / async
-      # do not use redis or sync in here
+      # multi is pipelined (async)
+      # no reason to block in here
       multi.set 'mykey', x + 1
     end
   end
