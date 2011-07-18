@@ -7,18 +7,8 @@ unless Kernel.respond_to?(:require_relative)
   end
 end
 
-require 'cool.io/eventmachine'
-class Redis < EventMachine::Connection ; end
-# Patch in this fix for now
-module EventMachine
-  class Connection
-    def self.new(*args)
-      x = allocate
-      x.instance_eval { initialize *args }
-      x
-    end
-  end
-end
+require 'cool.io'
+class Redis < Cool.io::TCPSocket ; end
 
 require_relative 'redis/version'
 require_relative 'redis/reader'
@@ -37,6 +27,7 @@ class Redis
   end
   
   def initialize *args
+    super
     if defined? Hiredis and defined? Hiredis::Reader
       @reader = Hiredis::Reader.new
     else
@@ -58,7 +49,7 @@ class Redis
     @pubsub_callback = block
   end
     
-  def receive_data data
+  def on_read data
     @reader.feed data
     until (data = @reader.gets) == false
       deferrable = @queue.shift
@@ -74,7 +65,7 @@ class Redis
     end
   rescue Exception => e
     @queue.shift.fail e unless @queue.empty?
-    close_connection
+    close
   end
   
   def method_missing method, *args, &block

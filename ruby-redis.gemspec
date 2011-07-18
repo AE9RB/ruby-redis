@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = '>= 1.3.6'
   s.rubyforge_project         = 'ruby-redis'
  
-  s.add_dependency 'eventmachine'
+  s.add_dependency 'cool.io'
   s.add_development_dependency 'minitest'
 
   s.files        = Dir.glob('{bin,lib}/**/*') + %w(LICENSE README)

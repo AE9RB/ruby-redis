@@ -7,7 +7,7 @@ describe 'Redis Multi/Exec' do
     
     it 'runs a multi with failures' do
       inner_result = full_results = error = false
-      synchrony do |redis|
+      run_test_on_fiber do |redis|
         redis.multi_exec do |multi|
           multi.set 'mykey', 'myfoo'
           multi.get('mykey').callback do |msg|
@@ -28,7 +28,7 @@ describe 'Redis Multi/Exec' do
         end.errback do |err|
           error = err
         end
-        redis.synchrony.ping
+        redis.sync.ping
       end
       flunk error if error
       inner_result.must_equal 'myfoo'
@@ -41,7 +41,7 @@ describe 'Redis Multi/Exec' do
     
     it 'fails multi because of a watch' do
       full_results = error = false
-      synchrony do |redis|
+      run_test_on_fiber do |redis|
         redis.del 'mylist'
         redis.watch 'mylist'
         redis.set 'mylist', 'tripped'
@@ -52,7 +52,7 @@ describe 'Redis Multi/Exec' do
         end.errback do |err|
           error = true
         end
-        redis.synchrony.ping
+        redis.sync.ping
       end
       error.must_equal false
       full_results.must_equal nil
@@ -65,8 +65,8 @@ describe 'Redis Multi/Exec' do
     
     it 'runs a multi with failures' do
       inner_result = full_results = error = false
-      synchrony do |redis, r|
-        full_results = r.multi_exec do |multi|
+      run_test_on_fiber do |redis|
+        full_results = redis.sync.multi_exec do |multi|
           multi.set 'mykey', 'myfoo'
           multi.get('mykey').callback do |msg|
             inner_result = msg
@@ -94,11 +94,11 @@ describe 'Redis Multi/Exec' do
   
     it 'fails multi because of a watch' do
       full_results = false
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
         redis.del 'mylist'
         redis.watch 'mylist'
         redis.set 'mylist', 'tripped'
-        full_results = r.multi_exec do |multi|
+        full_results = redis.sync.multi_exec do |multi|
           multi.get('mylist').callback {|e| p e}
         end
       end

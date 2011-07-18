@@ -6,7 +6,7 @@ describe 'Redis Subscribe' do
   it 'handles subscriptions' do
     responses = []
     messages = []
-    synchrony do |redis|
+    run_test_on_fiber do |redis|
       redis.pubsub_callback do |message|
         messages << message
       end
@@ -17,7 +17,7 @@ describe 'Redis Subscribe' do
         responses << e
       end
 
-      responses << redis.synchrony.psubscribe('foo*')
+      responses << redis.sync.psubscribe('foo*')
 
       redis.subscribe('bat').callback do |response|
         responses << response
@@ -31,8 +31,8 @@ describe 'Redis Subscribe' do
         responses << e
       end
 
-      responses << redis.synchrony.unsubscribe
-      responses << redis.synchrony.ping
+      responses << redis.sync.unsubscribe
+      responses << redis.sync.ping
       
     end
     

@@ -17,11 +17,11 @@ class Redis
     end
     
     def feed data
-      unshift_split if @split
       push data
     end
     
     def gets
+      unshift_split if @split
       frame do |str|
         @elements << str
         if @remaining > 0

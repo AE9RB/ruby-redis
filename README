@@ -3,25 +3,22 @@ proxy for Redis.  Special attention was paid to performance of the basic
 Redis protocol.  All of the magic is in reader.rb.  This same parser can
 be used for both clients and servers.
 
-Which client gem should you use, 'redis' or 'ruby-redis'?  Use 'ruby-redis'
-for cool.io projects, and 'redis' if you're not using cool.io.
-
 Performance considerations:
 
-Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8 is slower, but
-usable.  The client under JRuby performs well and should be faster than
-any alternative. The server under JRuby performs poorly.  Rubinius 1.2
-and 2.0 did not perform well in any tests.  The hiredis option is
-essential for Rubinius.
+Ruby Redis uses cool.io for evented IO using libev.  An earlier version used
+EventMachine but cool.io is faster in every benchmark.
+
+Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8.7 is slower, but
+usable.  Rubinius 1.2 and 2.0 did not perform well in any tests.  The
+hiredis option is essential for Rubinius.
 
 If the hiredis gem is compatible with your platform, you can use it for the 
-client instead of the pure Ruby implementation.  It won't double the
-performance under Ruby 1.9, but it is faster in all cases (being pure C).
+client instead of the pure Ruby implementation.  It won't even double the
+performance under Ruby 1.9, but it is faster in all cases (being C).
 
-My laptop runs a ruby-redis server capable of up to 20k requests per
-second performing GET and SET commands.  The client easily hits 40k
-per second.  An amazon c1.medium 32-bit instance, using just one
-core (2.5 compute units), can handle more than 50Mbps.
+My laptop runs a ruby-redis server capable of 20k requests per second.
+The client easily hits 40k requests per second.  An amazon c1.medium 32-bit
+instance, using just one core (2.5 units), can handle more than 50Mbps.
 
 
 Client Usage:
@@ -29,47 +26,45 @@ Client Usage:
 # To enable the optional hiredis reader, it only need be loaded
 require 'hiredis/reader'
 
-# The only gem dependency is cool.io unless you enable hiredis
+# Examples of the async interface
 require 'redis'
-EM.run {
-  redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
-  # Subscribe and publish messages will call here
-  redis.pubsub_callback do |message|
-    case message[0]
-    when 'psubscribe' ...
-  end
-  # All commands implemented uniformly with method_missing
-  # Returns instance of Redis::Command < Deferrable 
-  # Pipelining is implicit
-  redis.set :pi, 3.14159
-  redis.get('pi') do |result|
-    p result
-  end
-  redis.blpop('mylist', 0).callback do |result|
-    p result
-  end.errback do |e|
-    raise e
-  end
-}
+redis = Redis.connect '127.0.0.1', 6379
+# All commands implemented uniformly with method_missing
+# Returns instance of Redis::Command < Deferrable 
+# Pipelining is implicit
+redis.set :pi, 3.14159
+redis.get('pi') do |result|
+  p result
+end
+redis.blpop('mylist', 0).callback do |result|
+  p result
+end.errback do |e|
+  raise e
+end
+# Don't forget to start it on a loop
+redis.attach Cool.io::Loop.default
+Cool.io::Loop.default.run
 
-# Built-in support for Fibers; compatible with em-synchrony
-require 'redis/synchrony'
-Redis.synchrony {
-  # Use redis to pipeline and sync to block
-  redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
-  sync = redis.synchrony
-  # repeat transaction until success
+
+# Fibers for blocking and transactions
+require 'redis/fibers'
+Redis.fiber(Redis.connect '127.0.0.1', 6379) do |redis| 
+  redis.attach Cool.io::Loop.default
   reply = nil
   until reply
-    redis.watch 'mykey' # never fails, use pipeline
-    x = sync.get('mykey').to_i
-    reply = sync.multi_exec do |multi|
-      # multi is pipelined / async
-      # do not use redis or sync in here
+    # watch never fails, use pipeline
+    redis.watch 'mykey' 
+    # wait on the value we want to change
+    x = redis.sync.get('mykey').to_i
+    reply = redis.sync.multi_exec do |multi|
+      # multi is pipelined (async)
+      # no reason to block in here
       multi.set 'mykey', x + 1
     end
   end
-}
+  redis.close
+end
+Cool.io::Loop.default.run
 
 
 Ruby <=> Redis type conversions:

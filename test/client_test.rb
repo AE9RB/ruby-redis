@@ -6,7 +6,8 @@ describe 'Redis Client' do
   describe 'Redis Blocking Client' do
 
     it 'GET SET DEL EXISTS' do
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
+        r = redis.sync
         r.set(:mykey1, 42).must_equal 'OK'
         r.get('mykey1').must_equal '42'
         r.exists('mykey1').must_equal true
@@ -16,20 +17,23 @@ describe 'Redis Client' do
     end
 
     it 'STRLEN' do
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
+        r = redis.sync
         r.set(:mykey1, -999).must_equal 'OK'
         r.strlen('mykey1').must_equal 4
       end
     end  
   
     it 'PING' do
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
+        r = redis.sync
         r.ping.must_equal 'PONG'
       end
     end
 
     it 'BLPOP' do
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
+        r = redis.sync
         r.del('mylist')
         r.rpush('mylist', 'whee').must_equal 1
         r.blpop('mylist', 0).must_equal ['mylist', 'whee']
@@ -38,17 +42,19 @@ describe 'Redis Client' do
     end
   
     it 'HMSET HGETALL' do
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
+        r = redis.sync
         r.hmset('hasht', :A => 1, 'b' => 'two').must_equal 'OK'
         r.hgetall('hasht').must_equal 'b' => 'two', 'A' => '1'
       end
     end
   
     it 'fails when connection is closed' do
-      synchrony do |redis, r|
+      run_test_on_fiber do |redis|
+        r = redis.sync
         r.set('mykey', 'foo')
         r.get('mykey').must_equal 'foo'
-        r.close_connection
+        r.close
         lambda{
           r.get('mykey')
         }.must_raise RuntimeError
@@ -61,14 +67,14 @@ describe 'Redis Client' do
     
     it 'sends nil from BRPOPLPUSH on failure' do
       result = error = nil
-      synchrony do |redis|
+      run_test_on_fiber do |redis|
         redis.del('mylist')
         redis.brpoplpush('mylist', 'mylist2', 1).callback do |msg|
           result = msg
         end.errback do |e|
           error = e
         end
-        redis.synchrony.ping
+        redis.sync.ping
       end
       flunk error if error
       result.must_be_nil
@@ -76,15 +82,15 @@ describe 'Redis Client' do
 
     it 'sends array from BLPOP on success' do
       result = error = nil
-      synchrony do |redis|
+      run_test_on_fiber do |redis|
         redis.del('mylist')
-        redis.synchrony.rpush('mylist', 'lunch').must_equal 1
+        redis.sync.rpush('mylist', 'lunch').must_equal 1
         redis.blpop('mylist', 0).callback do |msg|
           result = msg
         end.errback do |e|
           error = e
         end
-        redis.synchrony.ping
+        redis.sync.ping
       end
       flunk error if error
       result.must_equal ['mylist', 'lunch']
