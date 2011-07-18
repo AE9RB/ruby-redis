@@ -7,27 +7,36 @@ unless Kernel.respond_to?(:require_relative)
   end
 end
 
-require 'cool.io'
-class Redis < Cool.io::TCPSocket ; end
+require 'eventmachine'
+class Redis < EventMachine::Connection ; end
 
 require_relative 'redis/version'
 require_relative 'redis/reader'
 require_relative 'redis/sender'
-require_relative 'redis/deferrable'
 
 class Redis
-    
+  
   include Sender
   
   class Command
-    include Deferrable
+    include EventMachine::Deferrable
     def initialize connection
       @connection = connection
+      self.errback do |msg|
+        # game over on timeout
+        @connection.close_connection unless msg
+      end
+    end
+    # EventMachine older than 1.0.0.beta.4 doesn't return self
+    test = EventMachine::DefaultDeferrable.new
+    unless EventMachine::DefaultDeferrable === test.callback{}
+      def callback; super; self; end
+      def errback; super; self; end
+      def timeout *args; super; self; end
     end
   end
   
-  def initialize *args
-    super
+  def initialize options={}
     if defined? Hiredis and defined? Hiredis::Reader
       @reader = Hiredis::Reader.new
     else
@@ -48,8 +57,8 @@ class Redis
   def pubsub_callback &block
     @pubsub_callback = block
   end
-    
-  def on_read data
+  
+  def receive_data data
     @reader.feed data
     until (data = @reader.gets) == false
       deferrable = @queue.shift
@@ -65,7 +74,7 @@ class Redis
     end
   rescue Exception => e
     @queue.shift.fail e unless @queue.empty?
-    close
+    close_connection
   end
   
   def method_missing method, *args, &block

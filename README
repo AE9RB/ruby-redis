@@ -1,20 +1,29 @@
 This project was started because I needed an authenticating and routable
 proxy for Redis.  Special attention was paid to performance of the basic
-Redis protocol.  All of the magic is in reader.rb.  This same parser can
+Redis protocol.  All of the magic is in buftok.rb.  This same parser can
 be used for both clients and servers.
+
+Which client gem should you use, 'redis' or 'ruby-redis'?  Use 'ruby-redis'
+for EventMachine projects, and 'redis' if you're not using EventMachine.
+Use 'ruby-redis' when you need a high-performance replace for hiredis/reader
+in pure Ruby.
 
 Performance considerations:
 
-Ruby Redis uses cool.io for evented IO using libev.  An earlier version used
-EventMachine but cool.io tested faster.
-
-Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8.7 is slower, but
-usable.  Rubinius 1.2 and 2.0 did not perform well in any tests.  The
-hiredis option is essential for Rubinius.
+Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8 is slower, but
+usable.  The client under JRuby performs well and should be faster than
+any alternative. The server under JRuby performs poorly.  Rubinius 1.2
+and 2.0 did not perform well in any tests.  The hiredis option is
+essential for Rubinius.
 
 If the hiredis gem is compatible with your platform, you can use it for the 
-client instead of the pure Ruby implementation.  It won't even double the
-performance under Ruby 1.9, but it is slightly faster in all cases (being C).
+client instead of the pure Ruby implementation.  It won't double the
+performance under Ruby 1.9, but it is faster in all cases (being pure C).
+
+My laptop runs a ruby-redis server capable of up to 20k requests per
+second performing GET and SET commands.  The client easily hits 40k
+per second.  An amazon c1.medium 32-bit instance, using just one
+core (2.5 compute units), can handle more than 50Mbps.
 
 
 Client Usage:
@@ -22,45 +31,47 @@ Client Usage:
 # To enable the optional hiredis reader, it only need be loaded
 require 'hiredis/reader'
 
-# Examples of the async interface
+# The only gem dependency is EventMachine unless you enable hiredis
 require 'redis'
-redis = Redis.connect '127.0.0.1', 6379
-# All commands implemented uniformly with method_missing
-# Returns instance of Redis::Command < Deferrable 
-# Pipelining is implicit
-redis.set :pi, 3.14159
-redis.get('pi') do |result|
-  p result
-end
-redis.blpop('mylist', 0).callback do |result|
-  p result
-end.errback do |e|
-  raise e
-end
-# Don't forget to start it on a loop
-redis.attach Cool.io::Loop.default
-Cool.io::Loop.default.run
+EM.run {
+  redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
+  # Subscribe and publish messages will call here
+  redis.pubsub_callback do |message|
+    case message[0]
+    when 'psubscribe' ...
+  end
+  # All commands implemented uniformly with method_missing
+  # Returns instance of Redis::Command < EventMachine::Deferrable 
+  # Pipelining is implicit
+  redis.set :pi, 3.14159
+  redis.get('pi') do |result|
+    p result
+  end
+  redis.blpop('mylist', 0).callback do |result|
+    p result
+  end.errback do |e|
+    raise e
+  end
+}
 
-
-# Fibers for blocking and transactions
-require 'redis/fibers'
-Redis.fiber(Redis.connect '127.0.0.1', 6379) do |redis| 
-  redis.attach Cool.io::Loop.default
+# Built-in support for Fibers; compatible with em-synchrony
+require 'redis/synchrony'
+Redis.synchrony {
+  # Use redis to pipeline and sync to block
+  redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
+  sync = redis.synchrony
+  # repeat transaction until success
   reply = nil
   until reply
-    # watch never fails, use pipeline
-    redis.watch 'mykey' 
-    # wait on the value we want to change
-    x = redis.sync.get('mykey').to_i
-    reply = redis.sync.multi_exec do |multi|
-      # multi is pipelined (async)
-      # no reason to block in here
+    redis.watch 'mykey' # never fails, use pipeline
+    x = sync.get('mykey').to_i
+    reply = sync.multi_exec do |multi|
+      # multi is pipelined / async
+      # do not use redis or sync in here
       multi.set 'mykey', x + 1
     end
   end
-  redis.close
-end
-Cool.io::Loop.default.run
+}
 
 
 Ruby <=> Redis type conversions:

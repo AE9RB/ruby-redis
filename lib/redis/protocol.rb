@@ -1,4 +1,5 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
+require 'eventmachine'
 require_relative 'reader'
 require_relative 'sender'
 
@@ -16,7 +17,7 @@ class Redis
   end
 
   class Watcher
-    include Deferrable
+    include EventMachine::Deferrable
     
     attr_reader :bound
     
@@ -72,15 +73,15 @@ class Redis
     
     # Companion to send_data.
     def send_redis data
-      if Deferrable === data
+      if EventMachine::Deferrable === data
         @deferred.unbind if @deferred and @deferred != data
         @deferred = data
       elsif Response === data
         data.each do |item|
-          write item
+          send_data item
         end
       elsif Integer === data
-        write ":#{data}\r\n"
+        send_data ":#{data}\r\n"
       else
         super
       end
@@ -121,11 +122,11 @@ class Redis
           return Response::NIL_MB 
         end
       end
-      write "*#{@multi.size}\r\n"
+      send_data "*#{@multi.size}\r\n"
       response = []
       @multi.each do |strings| 
         result = call_redis *strings
-        if Deferrable === result
+        if EventMachine::Deferrable === result
           result.unbind
           send_redis nil
         else
@@ -140,16 +141,16 @@ class Redis
       send "redis_#{command.upcase}", *arguments
     rescue Exception => e
       raise e if CloseConnection === e
-      # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+      e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       Response["-ERR #{e.class.name}: #{e.message}\r\n" ]
     end
   
     # Process incoming redis protocol
-    def on_read data
+    def receive_data data
       @reader.feed data
       until (strings = @reader.gets) == false
-        # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
+        Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
         if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
           @multi << strings
           send_redis Response::QUEUED
@@ -159,9 +160,9 @@ class Redis
       end
     rescue Exception => e
       if CloseConnection === e
-        output_buffer_size.zero? ? close : should_close_after_writing
+        close_connection_after_writing
       else
-        write "-ERR #{e.class.name}: #{e.message}\r\n" 
+        send_data "-ERR #{e.class.name}: #{e.message}\r\n" 
       end
     end
 

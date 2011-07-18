@@ -41,7 +41,7 @@ class Redis
         collect << data
       end
       collect << ''
-      write collect.join "\r\n"
+      send_data collect.join "\r\n"
     end
     
   end

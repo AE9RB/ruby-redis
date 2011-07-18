@@ -1,10 +1,47 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
+require_relative 'database'
+require_relative 'protocol'
+require_relative 'server'
+require_relative 'keys'
+require_relative 'strings'
+require_relative 'lists'
+require_relative 'sets'
+require_relative 'zsets'
+require_relative 'hashes'
+require_relative 'pubsub'
+require_relative 'strict'
+
+require 'eventmachine'
 
 class Redis
-  module Connection
-
+  class Connection < EventMachine::Connection
+    
+    include NotStrict
+    include Protocol
+    
+    def initialize password=nil
+      @password = password
+      @database = Redis.databases[0]
+      authorize unless @password
+      super()
+    end
+    
+    def authorize
+      return if @authorized
+      extend Server
+      extend Keys
+      extend Strings
+      extend Lists
+      extend Sets
+      extend ZSets
+      extend Hashes
+      extend PubSub
+      @authorized = true
+    end
+    
     def redis_AUTH password
-      raise 'invalid password' unless authorize password
+      raise 'invalid password' unless password == @password
+      authorize
       Response::OK
     end
 
