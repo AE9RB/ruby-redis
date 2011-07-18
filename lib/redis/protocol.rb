@@ -77,10 +77,10 @@ class Redis
         @deferred = data
       elsif Response === data
         data.each do |item|
-          send_data item
+          write item
         end
       elsif Integer === data
-        send_data ":#{data}\r\n"
+        write ":#{data}\r\n"
       else
         super
       end
@@ -121,7 +121,7 @@ class Redis
           return Response::NIL_MB 
         end
       end
-      send_data "*#{@multi.size}\r\n"
+      write "*#{@multi.size}\r\n"
       response = []
       @multi.each do |strings| 
         result = call_redis *strings
@@ -140,13 +140,13 @@ class Redis
       send "redis_#{command.upcase}", *arguments
     rescue Exception => e
       raise e if CloseConnection === e
-      Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
-      e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      # Redis.logger.warn "#{command.dump}: #{e.class}:/#{e.backtrace[0]} #{e.message}"
+      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       Response["-ERR #{e.class.name}: #{e.message}\r\n" ]
     end
   
     # Process incoming redis protocol
-    def receive_data data
+    def on_read data
       @reader.feed data
       until (strings = @reader.gets) == false
         # Redis.logger.warn "#{strings.collect{|a|a.dump}.join ' '}"
@@ -159,9 +159,9 @@ class Redis
       end
     rescue Exception => e
       if CloseConnection === e
-        close_connection_after_writing
+        output_buffer_size.zero? ? close : should_close_after_writing
       else
-        send_data "-ERR #{e.class.name}: #{e.message}\r\n" 
+        write "-ERR #{e.class.name}: #{e.message}\r\n" 
       end
     end
 

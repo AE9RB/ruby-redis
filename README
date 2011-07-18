@@ -6,7 +6,7 @@ be used for both clients and servers.
 Performance considerations:
 
 Ruby Redis uses cool.io for evented IO using libev.  An earlier version used
-EventMachine but cool.io is faster in every benchmark.
+EventMachine but cool.io tested faster.
 
 Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8.7 is slower, but
 usable.  Rubinius 1.2 and 2.0 did not perform well in any tests.  The
@@ -14,11 +14,7 @@ hiredis option is essential for Rubinius.
 
 If the hiredis gem is compatible with your platform, you can use it for the 
 client instead of the pure Ruby implementation.  It won't even double the
-performance under Ruby 1.9, but it is faster in all cases (being C).
-
-My laptop runs a ruby-redis server capable of 20k requests per second.
-The client easily hits 40k requests per second.  An amazon c1.medium 32-bit
-instance, using just one core (2.5 units), can handle more than 50Mbps.
+performance under Ruby 1.9, but it is slightly faster in all cases (being C).
 
 
 Client Usage:

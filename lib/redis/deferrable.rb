@@ -27,7 +27,6 @@ require File.expand_path '../redis', File.dirname(__FILE__)
 
 class Redis
   module Deferrable
-    autoload :Pool, 'em/deferrable/pool'
 
     # Specify a block to be executed if and when the Deferrable object receives
     # a status of :succeeded. See #set_deferred_status for more information.
@@ -179,11 +178,4 @@ class Redis
     alias set_deferred_failure fail
   end
 
-
-  # DefaultDeferrable is an otherwise empty class that includes Deferrable.
-  # This is very useful when you just need to return a Deferrable object
-  # as a way of communicating deferred status to some other part of a program.
-  class DefaultDeferrable
-    include Deferrable
-  end
 end

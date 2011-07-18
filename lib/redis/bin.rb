@@ -2,12 +2,47 @@ require File.expand_path '../redis', File.dirname(__FILE__)
 require_relative 'config'
 require_relative 'connection'
 require_relative 'logger'
+require_relative 'database'
+require_relative 'protocol'
+require_relative 'server'
+require_relative 'keys'
+require_relative 'strings'
+require_relative 'lists'
+require_relative 'sets'
+require_relative 'zsets'
+require_relative 'hashes'
+require_relative 'pubsub'
+require_relative 'strict'
 
 class Redis
   class Bin
 
-    class StrictConnection < Connection
+    class RedisServer < Cool.io::TCPSocket
       include Strict
+      include Connection
+      include Protocol
+      
+      def initialize io, password
+        @password = password
+        @database = Redis.databases[0]
+        authorize nil
+        super io
+      end
+      
+      def authorize password
+        return false unless password == @password
+        return true if @redis_authorized
+        extend Server
+        extend Keys
+        extend Strings
+        extend Lists
+        extend Sets
+        extend ZSets
+        extend Hashes
+        extend PubSub
+        @redis_authorized = true
+      end
+      
     end
     
     def self.server
@@ -44,30 +79,20 @@ class Redis
         Redis.logger.warn "Warning: no config file specified, using the default config. In order to specify a config file use 'ruby-redis /path/to/redis.conf'"
       end
 
-      EventMachine.epoll
-      EventMachine.run {
-  
-        (0...config[:databases]).each do |db_index|
-          Redis.databases[db_index] ||= Database.new
-        end
+      (0...config[:databases]).each do |db_index|
+        Redis.databases[db_index] ||= Database.new
+      end
 
-        #TODO support changing host and EventMachine::start_unix_domain_server
-        EventMachine::start_server "127.0.0.1", config[:port], StrictConnection, config[:requirepass]
-
-        if config[:daemonize]
-          raise 'todo'
-          # daemonize();
-          # FILE *fp = fopen(server.pidfile,"w");
-          # if (fp) { fprintf(fp,"%d\n",(int)getpid()); fclose(fp); }
-        end
-        
-        Redis.logger.notice "Server started, Ruby Redis version %s" % Redis::VERSION
-        Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
-
-        # The test suite blocks until it gets the pid from the log.
-        Redis.logger.flush
-
-      }
+      event_loop = Cool.io::Loop.default
+      Cool.io::TCPServer.new('127.0.0.1', config[:port], RedisServer, config[:requirepass]).attach(event_loop)
+      # Cool.io::TCPServer.new(ADDR, PORT, EchoServerConnection).attach(event_loop)
+      
+      Redis.logger.notice "Server started, Ruby Redis version %s" % Redis::VERSION
+      Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
+      # The test suite blocks until it gets the pid from the log.
+      Redis.logger.flush
+      
+      event_loop.run
       
     end
   end

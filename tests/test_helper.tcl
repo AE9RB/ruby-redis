@@ -112,7 +112,7 @@ proc execute_everything {} {
     execute_tests "unit/auth"
     execute_tests "unit/protocol"
     execute_tests "unit/basic"
-    execute_tests "unit/type/list"
+    # execute_tests "unit/type/list"
     execute_tests "unit/type/set"
     execute_tests "unit/type/zset"
     execute_tests "unit/type/hash"
