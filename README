@@ -1,43 +1,34 @@
 This project was started because I needed an authenticating and routable
-proxy for Redis.  Special attention was paid to performance of the basic
-Redis protocol.  All of the magic is in buftok.rb.  This same parser can
-be used for both clients and servers.
+proxy for Redis.  The main feature is a high-performance, evented, pure-Ruby,
+implementation of the complete Redis wire protocol with the same interface as
+hiredis/reader.
 
-Performance considerations:
+In the worst possible scenario of very small payloads, I was benching 30k GETs
+per second with pure ruby and 40k/s with hiredis/reader.  With larger payloads,
+the performance gap narrows to zero.  Not near-zero, actual zero.
 
-Ruby 1.9.2 is the fastest in all benchmarks.  Ruby 1.8 is slower, but
-usable.  The client under JRuby performs well and should be faster than
-any alternative. The server under JRuby performs poorly.  Rubinius 1.2
-and 2.0 did not perform well in any tests.  The hiredis option is
-essential for Rubinius.
+Ruby Gem:
 
-If the hiredis gem is compatible with your platform, you can use it for the 
-client instead of the pure Ruby implementation.  It won't double the
-performance under Ruby 1.9, but it is faster in all cases (being pure C).
+gem install ruby-redis
 
-My laptop runs a ruby-redis server capable of up to 20k requests per
-second performing GET and SET commands.  The client easily hits 40k
-per second.  An amazon c1.medium 32-bit instance, using just one
-core (2.5 compute units), can handle more than 50Mbps.
 
-Server Usage:
+Server:
 
 # Runs a server that looks and feels like the C redis-server
 bin/ruby-redis
+# Run the TCL test suite from C Redis against the Ruby server
+src/redis-test
 
-Client Usage:
 
-# To enable the optional hiredis reader, it only need be loaded
-require 'hiredis/reader'
+Client example:
 
-# The only gem dependency is EventMachine unless you enable hiredis
 require 'redis'
-EM.run {
-  redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
+EventMachine.run {
+  redis = EventMachine.connect '127.0.0.1', 6379, Redis
   # Subscribe and publish messages will call here
   redis.pubsub_callback do |message|
-    case message[0]
-    when 'psubscribe' ...
+    # case message[0]
+    # when 'psubscribe' ...
   end
   # All commands implemented uniformly with method_missing
   # Returns instance of Redis::Command < EventMachine::Deferrable 
@@ -46,14 +37,24 @@ EM.run {
   redis.get('pi') do |result|
     p result
   end
-  redis.blpop('mylist', 0).callback do |result|
+  redis.blpop('mylist', 1).callback do |result|
     p result
+    EM.stop
   end.errback do |e|
+    EM.stop
     raise e
   end
 }
 
-# Built-in support for Fibers; compatible with em-synchrony
+
+Using hiredis/reader (only affects clients):
+
+# require it before you connect
+require 'hiredis/reader'
+
+
+Fibers; compatible with em-synchrony:
+
 require 'redis/synchrony'
 Redis.synchrony {
   # Use redis to pipeline and sync to block
@@ -70,9 +71,20 @@ Redis.synchrony {
       multi.set 'mykey', x + 1
     end
   end
+  redis.close
+  p reply
+  EM.stop
 }
 
 
-Ruby <=> Redis type conversions:
+Ruby to Redis type conversions:
 
-#TODO
+      String === Status reply
+RuntimeError === Error reply
+      String === Bulk reply
+     Integer === Integer reply
+       Array === Multi-bulk reply
+        Hash === Multi-bulk reply to hgetall
+    NilClass === Nil element or nil multi-bulk
+   TrueClass === :1
+  FalseClass === :0

@@ -45,13 +45,6 @@ class Redis
     end
   end
   
-  class Command
-    # Provide a nice message when attempting sync inside multi_exec
-    def synchrony
-      raise 'synchrony unavilable here'
-    end
-  end
-  
   def self.synchrony blk=nil, tail=nil, &block
     blk ||= block
     context = Proc.new { Fiber.new { blk.call }.resume }

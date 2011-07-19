@@ -28,8 +28,8 @@ class Redis
       end
     end
     # EventMachine older than 1.0.0.beta.4 doesn't return self
-    test = EventMachine::DefaultDeferrable.new
-    unless EventMachine::DefaultDeferrable === test.callback{}
+    test = self.new nil
+    unless self === test.callback{}
       def callback; super; self; end
       def errback; super; self; end
       def timeout *args; super; self; end
@@ -136,13 +136,21 @@ class Redis
   # Wrap around multi and exec.  Leaves the raw calls
   # to multi and exec open for custom implementations.
   def multi_exec
-    self.multi.errback do
+    self.multi.errback do |r|
       # This usually happens in the case of a programming error.
       # Sometimes it is called when the connection breaks.
       self.close_connection
     end
-    yield redis_multi = Multi.new(self)
+    error = nil
+    begin
+      yield redis_multi = Multi.new(self)
+    rescue Exception => e
+      error = e
+    end
     redis_exec = self.exec
+    if error
+      EM.next_tick { redis_exec.fail error }
+    end
     redis_exec.callback do |results|
       # Normalized results include syntax errors and original references.
       # Command callbacks are meant to run before exec callbacks.

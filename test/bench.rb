@@ -32,6 +32,8 @@ data64k = 'XYZ!'*16384
 data1m = data64k*16
 
 types = [:em_hiredis, :ruby_redis]
+# types = [:ruby_redis, :em_hiredis]
+# types = [:ruby_redis]
   
 Benchmark.bmbm do |bm|
 
