@@ -2,18 +2,14 @@ require File.join(File.dirname(__FILE__), '../lib/redis')
 require 'em-hiredis'
 require 'benchmark'
 
-def runit kind, qty, data
+def bench kind, qty, data
+  success = 0
   EventMachine.run do
-    success = 0
-    case kind
-    when :ruby_redis
-      redis = EventMachine.connect '127.0.0.1', 6379, Redis
-    when :em_hiredis
-      # redis = EM::Hiredis::Client.connect
-      redis = EM::Hiredis.connect
+    redis = case kind
+    when :ruby_redis then EventMachine.connect '127.0.0.1', 6379, Redis
+    when :em_hiredis then EM::Hiredis.connect
     end
-    # sleep 0.5 # lazy, give time to connect
-    redis.set("a", data) do |status|
+    redis.set("a", data) do
       qty.times do
         redis.get "a" do |response|
           if data.size == response.size
@@ -21,41 +17,41 @@ def runit kind, qty, data
           else
             raise 'bad response'
           end
-          if success == qty
-            EM.defer {
-              redis.close_connection
-              EM.defer {
-                EM.stop
-              }
-            }
+          if qty == success
+            redis.close
+            EM.stop
           end
         end
       end
     end
   end
+  raise 'fail' unless success == qty
 end
 
 data64k = 'XYZ!'*16384
 data1m = data64k*16
 
-[:ruby_redis, :hiredis].each do |type|
+types = [:em_hiredis, :ruby_redis]
   
-  Benchmark.bmbm do |bm|
-  
-    bm.report("%-10s 75000  20b"%type)  {
-      runit :ruby_redis, 75000, 'xyzzy'*4
-    }
+Benchmark.bmbm do |bm|
 
-    bm.report("%-10s  5000  64k"%type)  {
-      runit :ruby_redis,  5000, data64k
+  types.each do |type|
+    bm.report("%-10s 75000  20b"%type)  {
+      bench type, 75000, 'xyzzy'*4
     }
-  
-    bm.report("%-10s   250   1m"%type)  {
-      runit :ruby_redis, 250, data1m
-    }
-    
   end
 
-  puts
+  types.each do |type|
+    bm.report("%-10s  5000  64k"%type)  {
+      bench type, 5000, data64k
+    }
+  end
+  
+  types.each do |type|
+    bm.report("%-10s   250   1m"%type)  {
+      bench type, 250, data1m
+    }
+  end
+    
   
 end
