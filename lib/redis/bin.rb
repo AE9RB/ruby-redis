@@ -1,13 +1,50 @@
 require File.expand_path '../redis', File.dirname(__FILE__)
 require_relative 'config'
-require_relative 'connection'
 require_relative 'logger'
+require_relative 'strict'
+require_relative 'connection'
+require_relative 'protocol'
+require_relative 'database'
+require_relative 'server'
+require_relative 'keys'
+require_relative 'strings'
+require_relative 'lists'
+require_relative 'sets'
+require_relative 'zsets'
+require_relative 'hashes'
+require_relative 'pubsub'
 
 class Redis
   class Bin
 
-    class StrictConnection < Connection
+    class RubyRedis < EventMachine::Connection
+
       include Strict
+      include Connection
+      include Protocol
+      include Sender
+      
+      def initialize password=nil
+        @password = password
+        @database = Redis.databases[0]
+        authorized nil
+        super()
+      end
+
+      def authorized password
+        return if @authorized
+        return false unless @password == password
+        extend Server
+        extend Keys
+        extend Strings
+        extend Lists
+        extend Sets
+        extend ZSets
+        extend Hashes
+        extend PubSub
+        @authorized = true
+      end
+      
     end
     
     def self.server
@@ -52,7 +89,7 @@ class Redis
         end
 
         #TODO support changing host and EventMachine::start_unix_domain_server
-        EventMachine::start_server "127.0.0.1", config[:port], StrictConnection, config[:requirepass]
+        EventMachine::start_server "127.0.0.1", config[:port], RubyRedis, config[:requirepass]
 
         if config[:daemonize]
           raise 'todo'

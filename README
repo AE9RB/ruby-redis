@@ -1,11 +1,11 @@
 This project was started because I needed an authenticating and routable
-proxy for Redis.  The main feature is a high-performance, evented, pure-Ruby,
-implementation of the complete Redis wire protocol with the same interface as
+proxy for Redis.  The main feature is a high performance, eventable, pure Ruby,
+implementation of the complete Redis wire protocol using the same interface as
 hiredis/reader.
 
 In the worst possible scenario of very small payloads, I was benching 30k GETs
 per second with pure ruby and 40k/s with hiredis/reader.  With larger payloads,
-the performance gap narrows to zero.  Not near-zero, actual zero.
+the performance gap narrows to zero.
 
 Ruby Gem:
 
