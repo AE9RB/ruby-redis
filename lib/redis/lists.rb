@@ -1,4 +1,3 @@
-require File.expand_path '../redis', File.dirname(__FILE__)
 require 'eventmachine'
 
 class Redis

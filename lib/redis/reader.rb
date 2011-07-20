@@ -1,5 +1,3 @@
-require File.expand_path '../redis', File.dirname(__FILE__)
-
 class Redis
   
   # This is almost as fast as hiredis/reader plus it supports servers

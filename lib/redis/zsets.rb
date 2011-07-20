@@ -1,5 +1,3 @@
-require File.expand_path '../redis', File.dirname(__FILE__)
-
 class Redis
   
   #WARN Time complexity may not match C version in this module yet.

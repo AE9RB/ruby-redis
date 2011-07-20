@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), '../lib/redis')
+require File.expand_path '../lib/redis', File.dirname(__FILE__)
 require 'em-hiredis'
 require 'benchmark'
 

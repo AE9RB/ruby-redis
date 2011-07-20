@@ -24,7 +24,7 @@ Client example:
 
 require 'redis'
 EventMachine.run {
-  redis = EventMachine.connect '127.0.0.1', 6379, Redis
+  redis = EventMachine.connect '127.0.0.1', 6379, Redis::Client
   # Subscribe and publish messages will call here
   redis.pubsub_callback do |message|
     # case message[0]
@@ -58,7 +58,7 @@ Fibers; compatible with em-synchrony:
 require 'redis/synchrony'
 Redis.synchrony {
   # Use redis to pipeline and sync to block
-  redis = EventMachine.connect '127.0.0.1', 6379, Redis, :hiredis => true
+  redis = EventMachine.connect '127.0.0.1', 6379, Redis::Client
   sync = redis.synchrony
   # repeat transaction until success
   reply = nil

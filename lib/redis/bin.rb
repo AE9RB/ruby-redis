@@ -1,23 +1,12 @@
-require File.expand_path '../redis', File.dirname(__FILE__)
-require_relative 'config'
-require_relative 'logger'
-require_relative 'strict'
-require_relative 'connection'
-require_relative 'protocol'
-require_relative 'database'
-require_relative 'server'
-require_relative 'keys'
-require_relative 'strings'
-require_relative 'lists'
-require_relative 'sets'
-require_relative 'zsets'
-require_relative 'hashes'
-require_relative 'pubsub'
+%w{reader sender version config logger strict connection protocol database 
+   server keys strings lists sets zsets hashes pubsub}.each do |file|
+     require File.expand_path file, File.dirname(__FILE__)
+end
 
 class Redis
   class Bin
 
-    class RubyRedis < EventMachine::Connection
+    class RubyRedisServer < EventMachine::Connection
 
       include Strict
       include Connection
@@ -89,7 +78,7 @@ class Redis
         end
 
         #TODO support changing host and EventMachine::start_unix_domain_server
-        EventMachine::start_server "127.0.0.1", config[:port], RubyRedis, config[:requirepass]
+        EventMachine::start_server "127.0.0.1", config[:port], RubyRedisServer, config[:requirepass]
 
         if config[:daemonize]
           raise 'todo'
