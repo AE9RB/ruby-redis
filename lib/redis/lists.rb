@@ -57,7 +57,7 @@ class Redis
         end
       end
       df = DeferredPop.new(@database, timeout, *args)
-      df.errback { send_redis Response::NIL_MB }
+      df.errback { send_redis :'*-1' }
       df.callback { |key, value| send_redis [key, value] }
       df
     end
@@ -73,7 +73,7 @@ class Redis
         end
       end
       df = DeferredPop.new(@database, timeout, *args)
-      df.errback { send_redis Response::NIL_MB }
+      df.errback { send_redis :'*-1' }
       df.callback { |key, value| send_redis [key, value] }
       df
     end
@@ -100,7 +100,7 @@ class Redis
       end
       redis_t NilClass, Array, @database[destination]
       df = DeferredPop.new @database, redis_pos_i(timeout), source
-      df.errback {send_redis Response::NIL_MB}
+      df.errback {send_redis :'*-1'}
       df.callback do |key, value|
         redis_LPUSH destination, value
         send_redis value

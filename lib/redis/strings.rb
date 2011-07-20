@@ -95,20 +95,20 @@ class Redis
     
     def redis_SET key, value
       @database[key] = value
-      Response::OK
+      :'+OK'
     end
 
     def redis_SETEX key, seconds, value
       @database[key] = value
       @database.expire key, redis_pos_i(seconds, 'invalid expire time in SETEX')
-      Response::OK
+      :'+OK'
     end
     
     def redis_MSET *args
       Hash[*args].each do |key, value|
         @database[key] = value
       end
-      Response::OK
+      :'+OK'
     end
     
     def redis_MSETNX *args

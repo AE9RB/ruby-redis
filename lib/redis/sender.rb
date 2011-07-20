@@ -7,17 +7,17 @@ class Redis
     def send_redis data
       collect = []
       if nil == data
-        collect << "$-1"
+        collect << :'$-1'
       elsif false == data
-        collect << ":0"
+        collect << :':0'
       elsif true == data
-        collect << ":1"
+        collect << :':1'
       elsif Float === data and data.nan?
-        collect << ":0"
+        collect << :':0'
       elsif Float === data and data.infinite? || 0 > 0
-        collect << ":inf"
+        collect << :':inf'
       elsif Float === data and data.infinite? || 0 < 0
-        collect << ":-inf"
+        collect << :':-inf'
       elsif Hash === data
         collect << "*#{data.size * 2}"
         data.each do |key, value|
@@ -40,7 +40,7 @@ class Redis
         collect << "$#{data.bytesize}"
         collect << data
       end
-      collect << ''
+      collect << :''
       send_data collect.join "\r\n"
     end
     

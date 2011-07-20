@@ -8,6 +8,37 @@ class Redis
     
   class Database
     
+    class Watcher
+
+      attr_reader :bound
+
+      def initialize
+        @watched = []
+        @bound = true
+      end
+
+      def bind database, *keys
+        return unless @bound
+        keys.each do |key|
+          entry = [database, key]
+          next if @watched.include? entry
+          @watched << entry
+          (database.watchers[key] ||= []).push self
+        end
+      end
+
+      def unbind
+        return unless @bound
+        @watched.each do |database, key|
+          key_df_list = database.watchers[key]
+          next unless key_df_list
+          key_df_list.delete_if { |e| e == self }
+        end
+        @bound = false
+      end
+
+    end
+    
     # Redis databases are volatile dictionaries.
     
     attr_reader :blocked_pops, :watchers
@@ -21,7 +52,7 @@ class Redis
     
     def touch key
       (@watchers[key]||[]).each do |watcher|
-        watcher.succeed self, key
+        watcher.unbind
       end
     end
     
@@ -106,4 +137,5 @@ class Redis
     end
     
   end
+  
 end

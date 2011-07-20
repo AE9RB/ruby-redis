@@ -31,7 +31,7 @@ class Redis
     
     def redis_HMSET key, *args
       (@database[key] ||= {}).merge! Hash[*args]
-      Response::OK
+      :'+OK'
     end
       
     def redis_HMGET key, *fields

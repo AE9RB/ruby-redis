@@ -11,8 +11,6 @@ require_relative 'hashes'
 require_relative 'pubsub'
 require_relative 'strict'
 
-require 'eventmachine'
-
 class Redis
   class Connection < EventMachine::Connection
     
@@ -42,18 +40,18 @@ class Redis
     def redis_AUTH password
       raise 'invalid password' unless password == @password
       authorize
-      Response::OK
+      :'+OK'
     end
 
     def redis_SELECT db_index
       database = Redis.databases[redis_i db_index]
       raise 'invalid DB index' unless database
       @database = database
-      Response::OK
+      :'+OK'
     end
     
     def redis_PING
-      Response::PONG
+      :'+PONG'
     end
 
     def redis_ECHO str
@@ -61,8 +59,8 @@ class Redis
     end
 
     def redis_QUIT
-      send_redis Response::OK
-      raise CloseConnection
+      send_redis :'+OK'
+      :quit
     end
     
   end
