@@ -16,6 +16,7 @@ class Redis
     
     include NotStrict
     include Protocol
+    include Sender
     
     def initialize password=nil
       @password = password

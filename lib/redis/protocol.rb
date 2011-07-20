@@ -28,11 +28,16 @@ class Redis
           send_redis :'+QUEUED'
         else
           result = __send__ "redis_#{strings[0].upcase}", *strings[1..-1]
-          if result == :quit
+          if Integer === result
+            send_data ":#{result}\r\n"
+          elsif EventMachine::Deferrable === result
+            @deferred.unbind if @deferred and @deferred != result
+            @deferred = result
+          elsif result == :quit
             @reader = nil
             close_connection_after_writing
             break
-          else
+          elsif result != :exec
             send_redis result
           end
         end
@@ -42,21 +47,6 @@ class Redis
       # Redis.logger.warn "#{e.class}:/#{e.backtrace[0]} #{e.message}"
       # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
       send_data "-ERR #{e.class.name}: #{e.message}\r\n" 
-    end
-
-    # Add a few things to the standard sender
-    include Sender
-    def send_redis data
-      if EventMachine::Deferrable === data
-        @deferred.unbind if @deferred and @deferred != data
-        @deferred = data
-      elsif Integer === data
-        send_data ":#{data}\r\n"
-      elsif Symbol === data
-        send_data "#{data}\r\n" unless data.empty?
-      else
-        super
-      end
     end
 
     def redis_WATCH *keys
@@ -106,7 +96,7 @@ class Redis
         end
       end
       @multi = nil
-      :''
+      :exec
     end
 
   end

@@ -3,14 +3,16 @@ require File.expand_path '../redis', File.dirname(__FILE__)
 class Redis
 
   module Sender
-    
+
     def send_redis data
       collect = []
-      if nil == data
+      if Symbol === data
+        collect << data
+      elsif NilClass === data
         collect << :'$-1'
-      elsif false == data
+      elsif FalseClass === data
         collect << :':0'
-      elsif true == data
+      elsif TrueClass === data
         collect << :':1'
       elsif Float === data and data.nan?
         collect << :':0'
@@ -40,7 +42,7 @@ class Redis
         collect << "$#{data.bytesize}"
         collect << data
       end
-      collect << :''
+      collect << ''
       send_data collect.join "\r\n"
     end
     
