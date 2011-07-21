@@ -21,7 +21,11 @@ class Redis
         unshift_split if @split
         frame do |str|
           @elements << str
-          if @remaining > 0
+          if @remaining != 0
+            if @remaining < 0
+              @remaining = -@remaining
+              @elements = str
+            end
             @remaining -= 1
             if @remaining == 0 and !@stack.empty?
               elements = @elements
@@ -82,9 +86,10 @@ class Redis
             prev_remaining = @remaining
             @remaining = line[1..-1].to_i
             if @remaining == 0
-              @completed << []
+              @remaining = -1
+              yield []
             elsif @remaining == -1
-              @completed << nil
+              yield nil
             elsif @remaining > 1024*1024
               flush
               raise 'invalid multibulk length'
@@ -104,7 +109,7 @@ class Redis
           else
             if @remaining > 0
               flush
-              raise "expected '$', got '#{line[0].chr}'" 
+              raise "expected \"$\", got #{line[0].chr.dump}" 
             end
             parts = line.split(' ')
             @remaining = parts.size

@@ -38,8 +38,9 @@ class Redis
     end
   
     def unbind
-      @queue.each { |d| d.fail RuntimeError.new 'connection closed' }
-      @queue.clear
+      until @queue.empty?
+        @queue.shift.fail RuntimeError.new 'connection closed'
+      end
     end
   
     # Pub/Sub works by sending all orphaned messages to this callback.
@@ -51,7 +52,15 @@ class Redis
   
     def receive_data data
       @reader.feed data
-      until (data = @reader.gets) == false
+      until (
+        begin
+          data = @reader.gets
+        rescue Exception => e
+          @queue.shift.fail e unless @queue.empty?
+          close_connection
+          data = false
+        end
+      ) == false
         deferrable = @queue.shift
         if deferrable
           if Exception === data
@@ -63,9 +72,6 @@ class Redis
           @pubsub_callback.call data
         end
       end
-    rescue Exception => e
-      @queue.shift.fail e unless @queue.empty?
-      close_connection
     end
   
     def method_missing method, *args, &block
@@ -78,11 +84,7 @@ class Redis
       end
       if transform = self.class.transforms[method]
         deferrable.callback do |data|
-          begin
-            deferrable.succeed transform.call data
-          rescue Exception => e
-            deferrable.fail e
-          end
+          deferrable.succeed transform.call data unless data == 'QUEUED'
         end
       end
       deferrable.callback &block if block
@@ -111,7 +113,7 @@ class Redis
         @commands.size
       end
       def method_missing method, *args, &block
-        command = @connection.send method, *args, &block
+        command = @connection.send method, *args
         proxy = Command.new @connection
         command.callback do |status|
           @commands << proxy
@@ -120,7 +122,13 @@ class Redis
           @commands << err
           proxy.fail err
         end
-        proxy
+        if transform = Client.transforms[method]
+          proxy.callback do |data|
+            proxy.succeed transform.call data
+          end
+        end
+        proxy.callback &block if block
+        return proxy
       end
     end
   
@@ -132,19 +140,8 @@ class Redis
         # Sometimes it is called when the connection breaks.
         self.close_connection
       end
-      error = nil
-      begin
-        yield redis_multi = Multi.new(self)
-      rescue Exception => e
-        error = e
-      end
+      yield redis_multi = Multi.new(self)
       redis_exec = self.exec
-      if error
-        EM.next_tick do
-          close_connection
-          redis_exec.fail error 
-        end
-      end
       redis_exec.callback do |results|
         # Normalized results include syntax errors and original references.
         # Command callbacks are meant to run before exec callbacks.
@@ -174,6 +171,7 @@ class Redis
     # transforms here that are automatically attached to command callbacks.
     #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
     #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
+    #   Redis.transforms.delete :hgetall # if you prefer the array
     def self.transforms
       @@transforms ||= lambda {
         boolean = lambda { |tf| tf[0] == 1 ? true : false }
