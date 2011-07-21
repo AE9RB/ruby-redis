@@ -1,4 +1,4 @@
-require File.expand_path '../lib/redis', File.dirname(__FILE__)
+require File.expand_path '../lib/redis/client', File.dirname(__FILE__)
 require 'em-hiredis'
 require 'benchmark'
 
@@ -6,7 +6,7 @@ def bench kind, qty, data
   success = 0
   EventMachine.run do
     redis = case kind
-    when :ruby_redis then EventMachine.connect '127.0.0.1', 6379, Redis
+    when :ruby_redis then EventMachine.connect '127.0.0.1', 6379, Redis::Client
     when :em_hiredis then EM::Hiredis.connect
     end
     redis.set("a", data) do

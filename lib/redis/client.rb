@@ -10,14 +10,18 @@ class Redis
     include Sender
   
     class Command
+      
       include EventMachine::Deferrable
+      
       def initialize connection
+        return unless connection
         @connection = connection
         self.errback do |msg|
           # game over on timeout
           @connection.close_connection unless msg
         end
       end
+      
       # EventMachine older than 1.0.0.beta.4 doesn't return self
       test = self.new nil
       unless self === test.callback{}
@@ -25,8 +29,71 @@ class Redis
         def errback; super; self; end
         def timeout *args; super; self; end
       end
+      
+      # Some data is best transformed into a Ruby type.  You can set up global
+      # transforms here that are automatically attached to command callbacks.
+      #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
+      #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
+      #   Redis.transforms.delete :hgetall # if you prefer the array
+      def self.transforms
+        @@transforms ||= lambda {
+          boolean = lambda { |tf| tf[0] == 1 ? true : false }
+          hash = lambda { |hash| Hash[*hash] }
+          {
+            #keys
+            :exists => boolean,
+            :expire => boolean,
+            :expireat => boolean,
+            :move => boolean,
+            :persist => boolean,
+            :renamenx => boolean,
+            #strings
+            :msetnx => boolean,
+            :setnx => boolean,
+            #hashes
+            :hexists => boolean,
+            :hgetall => hash,
+            :hset => boolean,
+            :hsetnx => boolean,
+            #sets
+            :sismember => boolean,
+            :smove => boolean,
+            :srem => boolean,
+            #zsets
+            :zrem => boolean,
+          }
+        }.call
+      end
+      
+    end
+
+
+    # Yielded by multi_exec to proxy and collect commands
+    class Multi < Command
+      include Enumerable
+      def initialize *args
+        super
+        @commands = []
+      end
+      def each
+        @commands.each {|x|yield x}
+      end
+      def method_missing method, *args, &block
+        command = @connection.new_command true, false, method, *args
+        proxy = @connection.new_command false, true, method
+        command.callback do |status|
+          @commands << proxy
+        end
+        command.errback do |err|
+          @commands << err
+          proxy.fail err
+        end
+        proxy.callback &block if block
+        return proxy
+      end
     end
   
+    
     def initialize options={}
       if defined? Hiredis and defined? Hiredis::Reader
         @reader = Hiredis::Reader.new
@@ -73,63 +140,11 @@ class Redis
         end
       end
     end
-  
+    
     def method_missing method, *args, &block
-      deferrable = Command.new self
-      if [:subscribe, :psubscribe, :unsubscribe, :punsubscribe].include? method
-        deferrable.callback do |data|
-          deferrable.succeed nil
-          @pubsub_callback.call data
-        end
-      end
-      if transform = self.class.transforms[method]
-        deferrable.callback do |data|
-          deferrable.succeed transform.call data unless data == 'QUEUED'
-        end
-      end
+      deferrable = new_command true, true, method, *args
       deferrable.callback &block if block
-      @queue.push deferrable
-      send_redis args.reduce([method]){ |arr, arg|
-        if Hash === arg
-          arr += arg.to_a.flatten 1
-        else
-          arr << arg
-        end
-      }
       deferrable
-    end
-  
-    # Yielded by multi_exec to proxy and collect commands
-    class Multi < Command
-      include Enumerable
-      def initialize *args
-        super
-        @commands = []
-      end
-      def each
-        @commands.each {|x|yield x}
-      end
-      def size
-        @commands.size
-      end
-      def method_missing method, *args, &block
-        command = @connection.send method, *args
-        proxy = Command.new @connection
-        command.callback do |status|
-          @commands << proxy
-        end
-        command.errback do |err|
-          @commands << err
-          proxy.fail err
-        end
-        if transform = Client.transforms[method]
-          proxy.callback do |data|
-            proxy.succeed transform.call data
-          end
-        end
-        proxy.callback &block if block
-        return proxy
-      end
     end
   
     # Wrap around multi and exec.  Leaves the raw calls
@@ -165,42 +180,38 @@ class Redis
           redis_exec.succeed normalized_results
         end
       end
+      redis_exec
     end
-  
-    # Some data is best transformed into a Ruby type.  You can set up global
-    # transforms here that are automatically attached to command callbacks.
-    #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
-    #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
-    #   Redis.transforms.delete :hgetall # if you prefer the array
-    def self.transforms
-      @@transforms ||= lambda {
-        boolean = lambda { |tf| tf[0] == 1 ? true : false }
-        hash = lambda { |hash| Hash[*hash] }
-        {
-          #keys
-          :exists => boolean,
-          :expire => boolean,
-          :expireat => boolean,
-          :move => boolean,
-          :persist => boolean,
-          :renamenx => boolean,
-          #strings
-          :msetnx => boolean,
-          :setnx => boolean,
-          #hashes
-          :hexists => boolean,
-          :hgetall => hash,
-          :hset => boolean,
-          :hsetnx => boolean,
-          #sets
-          :sismember => boolean,
-          :smove => boolean,
-          :srem => boolean,
-          #zsets
-          :zrem => boolean,
+
+    def new_command do_send, do_plus, method, *args
+      command = Command.new self
+      if do_send
+        send_redis args.reduce([method]){ |arr, arg|
+          if Hash === arg
+            arr += arg.to_a.flatten 1
+          else
+            arr << arg
+          end
         }
-      }.call
+        @queue.push command
+      end
+      if do_plus
+        if [:subscribe, :psubscribe, :unsubscribe, :punsubscribe].include? method
+          command.callback do |data|
+            command.succeed nil
+            @pubsub_callback.call data
+          end
+        end
+        if transform = Command.transforms[method]
+          command.callback do |data|
+            command.succeed transform.call data
+          end
+        end
+      end
+      command
     end
+    
+
 
   end
   
