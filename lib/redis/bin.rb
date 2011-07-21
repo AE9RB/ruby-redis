@@ -13,16 +13,20 @@ class Redis
       include Protocol
       include Sender
       
-      def initialize password=nil
-        @password = password
+      def initialize config={}
+        @config = config
+        super
+      end
+      
+      def post_init
         @database = Redis.databases[0]
         authorized nil
-        super()
+        set_comm_inactivity_timeout @config[:timeout]
       end
-
+      
       def authorized password
-        return if @authorized
-        return false unless @password == password
+        return true if @authorized
+        return false unless @config[:requirepass] == password
         extend Server
         extend Keys
         extend Strings
@@ -53,43 +57,60 @@ class Redis
 
       config = Config.new(ARGV.empty? ? [] : ARGF)
 
+      if config[:loglevel] == 'debug'
+        Redis.logger.level = Logger::DEBUG
+      elsif config[:loglevel] == 'notice'
+        Redis.logger.level = Logger::NOTICE
+      elsif config[:loglevel] == 'warning'
+        Redis.logger.level = Logger::WARNING
+      elsif config[:loglevel] != 'verbose'
+        raise "Invalid log level. Must be one of debug, notice, warning, verbose."
+      else
+        Redis.logger.level = Logger::INFO
+      end
+
       Dir.chdir config[:dir]
-
+      
       Redis.logger config[:logfile] unless config[:logfile] == 'stdout'
-
-      #TODO
-      # Set server verbosity to 'debug'
-      # it can be one of:
-      # debug (a lot of information, useful for development/testing)
-      # verbose (many rarely useful info, but not a mess like the debug level)
-      # notice (moderately verbose, what you want in production probably)
-      # warning (only very important / critical messages are logged)
-      # loglevel verbose
 
       if show_no_config_warning
         Redis.logger.warn "Warning: no config file specified, using the default config. In order to specify a config file use 'ruby-redis /path/to/redis.conf'"
       end
+      
+      (0...config[:databases]).each do |db_index|
+        Redis.databases[db_index] ||= Database.new
+      end
 
-      EventMachine.epoll
-      EventMachine.run {
-  
-        (0...config[:databases]).each do |db_index|
-          Redis.databases[db_index] ||= Database.new
+      if config[:daemonize]
+        exit!(0) if fork
+        Process::setsid
+        exit!(0) if fork
+        STDIN.reopen("/dev/null")
+        STDOUT.reopen("/dev/null", "w")
+        STDERR.reopen("/dev/null", "w")
+        begin
+          File.open(config[:pidfile], 'w') do |io|
+            io.write "%d\n" % Process.pid
+          end
+        rescue Exception => e
+          Redis.logger.error e.message
         end
+      end
+      
+      EventMachine.run {
 
-        #TODO support changing host and EventMachine::start_unix_domain_server
-        EventMachine::start_server "127.0.0.1", config[:port], RubyRedisServer, config[:requirepass]
-
-        if config[:daemonize]
-          raise 'todo'
-          # daemonize();
-          # FILE *fp = fopen(server.pidfile,"w");
-          # if (fp) { fprintf(fp,"%d\n",(int)getpid()); fclose(fp); }
+        started_message = "Server started, Ruby Redis version %s" % Redis::VERSION
+  
+        if config[:unixsocket]
+          EventMachine::start_server config[:unixsocket], RubyRedisServer, config
+          Redis.logger.notice started_message
+          Redis.logger.notice "The server is now ready to accept connections at %s" % config[:unixsocket]
+        else
+          EventMachine::start_server config[:bind], config[:port], RubyRedisServer, config
+          Redis.logger.notice started_message
+          Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
         end
         
-        Redis.logger.notice "Server started, Ruby Redis version %s" % Redis::VERSION
-        Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
-
         # The test suite blocks until it gets the pid from the log.
         Redis.logger.flush
 
