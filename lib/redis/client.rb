@@ -140,7 +140,10 @@ class Redis
       end
       redis_exec = self.exec
       if error
-        EM.next_tick { redis_exec.fail error }
+        EM.next_tick do
+          close_connection
+          redis_exec.fail error 
+        end
       end
       redis_exec.callback do |results|
         # Normalized results include syntax errors and original references.

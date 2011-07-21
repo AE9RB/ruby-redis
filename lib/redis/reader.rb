@@ -31,8 +31,6 @@ class Redis
             end
             next unless @remaining == 0
             @completed << @elements
-          elsif @remaining < 0
-            @completed << nil
           elsif !@elements.empty?
             @completed << @elements[0]
           end
@@ -83,8 +81,10 @@ class Redis
           when '*'
             prev_remaining = @remaining
             @remaining = line[1..-1].to_i
-            if @remaining == -1
-              yield nil
+            if @remaining == 0
+              @completed << []
+            elsif @remaining == -1
+              @completed << nil
             elsif @remaining > 1024*1024
               flush
               raise 'invalid multibulk length'
