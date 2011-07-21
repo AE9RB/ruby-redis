@@ -30,41 +30,6 @@ class Redis
         def timeout *args; super; self; end
       end
       
-      # Some data is best transformed into a Ruby type.  You can set up global
-      # transforms here that are automatically attached to command callbacks.
-      #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
-      #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
-      #   Redis.transforms.delete :hgetall # if you prefer the array
-      def self.transforms
-        @@transforms ||= lambda {
-          boolean = lambda { |tf| tf[0] == 1 ? true : false }
-          hash = lambda { |hash| Hash[*hash] }
-          {
-            #keys
-            :exists => boolean,
-            :expire => boolean,
-            :expireat => boolean,
-            :move => boolean,
-            :persist => boolean,
-            :renamenx => boolean,
-            #strings
-            :msetnx => boolean,
-            :setnx => boolean,
-            #hashes
-            :hexists => boolean,
-            :hgetall => hash,
-            :hset => boolean,
-            :hsetnx => boolean,
-            #sets
-            :sismember => boolean,
-            :smove => boolean,
-            :srem => boolean,
-            #zsets
-            :zrem => boolean,
-          }
-        }.call
-      end
-      
     end
 
 
@@ -110,10 +75,10 @@ class Redis
       end
     end
   
-    # Pub/Sub works by sending all orphaned messages to this callback.
-    # It is simple and fast but not tolerant to programming errors.
+    # This is simple and fast but not tolerant to programming errors.
+    # Don't send non-pubsub commands while subscribed and you're fine.
     # Subclass Redis and/or create a defensive layer if you need to.
-    def pubsub_callback &block
+    def on_pubsub &block
       @pubsub_callback = block
     end
   
@@ -183,7 +148,7 @@ class Redis
       redis_exec
     end
 
-    def new_command do_send, do_plus, method, *args
+    def new_command do_send, do_transform, method, *args
       command = Command.new self
       if do_send
         send_redis args.reduce([method]){ |arr, arg|
@@ -195,16 +160,16 @@ class Redis
         }
         @queue.push command
       end
-      if do_plus
-        if [:subscribe, :psubscribe, :unsubscribe, :punsubscribe].include? method
+      if do_transform
+        if transform = self.class.transforms[method]
           command.callback do |data|
-            command.succeed nil
-            @pubsub_callback.call data
-          end
-        end
-        if transform = Command.transforms[method]
-          command.callback do |data|
-            command.succeed transform.call data
+            result = transform.call data
+            if Proc === result
+              command.succeed nil
+              @pubsub_callback.call result.call
+            else
+              command.succeed result
+            end
           end
         end
       end
@@ -212,6 +177,46 @@ class Redis
     end
     
 
+    # Some data is best transformed into a Ruby type.  You can set up global
+    # transforms here that are automatically attached to command callbacks.
+    #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
+    #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
+    #   Redis.transforms.delete :hgetall # if you prefer the array
+    def self.transforms
+      @@transforms ||= lambda {
+        boolean = lambda { |tf| tf[0] == 1 ? true : false }
+        hash = lambda { |hash| Hash[*hash] }
+        pubsub = lambda { |msg| lambda { msg } }
+        {
+          #pubsub
+          :subscribe => pubsub,
+          :psubscribe => pubsub,
+          :unsubscribe => pubsub,
+          :punsubscribe => pubsub,
+          #keys
+          :exists => boolean,
+          :expire => boolean,
+          :expireat => boolean,
+          :move => boolean,
+          :persist => boolean,
+          :renamenx => boolean,
+          #strings
+          :msetnx => boolean,
+          :setnx => boolean,
+          #hashes
+          :hexists => boolean,
+          :hgetall => hash,
+          :hset => boolean,
+          :hsetnx => boolean,
+          #sets
+          :sismember => boolean,
+          :smove => boolean,
+          :srem => boolean,
+          #zsets
+          :zrem => boolean,
+        }
+      }.call
+    end
 
   end
   

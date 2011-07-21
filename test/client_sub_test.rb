@@ -7,7 +7,7 @@ describe 'Redis Subscribe' do
     responses = []
     messages = []
     synchrony do |redis|
-      redis.pubsub_callback do |message|
+      redis.on_pubsub do |message|
         messages << message
       end
       

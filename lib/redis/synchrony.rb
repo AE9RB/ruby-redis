@@ -40,10 +40,6 @@ class Redis
         @timeout = nil
       end
     
-      def pubsub_callback
-        raise 'only available async'
-      end
-    
       def method_missing method, *args, &block
         result = @redis.send method, *args, &block
         if result.respond_to? :callback and result.respond_to? :errback

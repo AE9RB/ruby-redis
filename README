@@ -26,7 +26,7 @@ require 'redis'
 EventMachine.run {
   redis = EventMachine.connect '127.0.0.1', 6379, Redis::Client
   # Subscribe and publish messages will call here
-  redis.pubsub_callback do |message|
+  redis.on_pubsub do |message|
     # case message[0]
     # when 'psubscribe' ...
   end
