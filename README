@@ -57,23 +57,24 @@ Fibers; compatible with em-synchrony:
 
 require 'redis/synchrony'
 Redis.synchrony {
-  # Use redis to pipeline and sync to block
+  # Be sure to pipeline commands when you can
   redis = EventMachine.connect '127.0.0.1', 6379, Redis::Client
+  # synchronized requests will return result or raise exception
   sync = redis.synchrony
   # repeat transaction until success
-  reply = nil
+  reply = check = nil
   until reply
-    redis.watch 'mykey' # never fails, use pipeline
+    redis.watch 'mykey'
     x = sync.get('mykey').to_i
-    reply = sync.multi_exec do |multi|
-      # multi is pipelined (async)
-      # no reason to block in here
-      multi.set 'mykey', x + 1
-    end
+    redis.multi
+    redis.set 'mykey', x + 1
+    redis.badcmd
+    redis.get('mykey') {|result| check=result}
+    reply = sync.exec
   end
   redis.close
-  p reply
   EM.stop
+  p reply, check # ["OK", #<RuntimeError>, "4"], "4"
 }
 
 

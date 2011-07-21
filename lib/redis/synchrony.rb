@@ -41,6 +41,7 @@ class Redis
       end
     
       def method_missing method, *args, &block
+        raise 'synchrony not allowed in multi' if @redis.in_multi? and method != :exec
         result = @redis.send method, *args, &block
         if result.respond_to? :callback and result.respond_to? :errback
           result.timeout @timeout if @timeout and result.respond_to? :timeout

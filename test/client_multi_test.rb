@@ -8,22 +8,22 @@ describe 'Redis Multi/Exec' do
     it 'runs a multi with failures' do
       inner_result = full_results = error = false
       synchrony do |redis|
-        redis.multi_exec do |multi|
-          multi.set 'mykey', 'myfoo'
-          multi.get('mykey').callback do |msg|
-            inner_result = msg
-          end
-          multi.del 'mylist'
-          multi.rpush('mylist', 1)
-          multi.rpush('mylist', 2)
-          multi.rpush('mylist', 'three')
-          # immediate fail
-          multi.badcommandforfail 
-          # fail on exec
-          multi.hget 'mylist', 'yeahright'
-          # should still work after failures
-          multi.lrange 'mylist', 0, -1
-        end.callback do |results|
+        redis.multi
+        redis.set 'mykey', 'myfoo'
+        redis.get('mykey').callback do |msg|
+          inner_result = msg
+        end
+        redis.del 'mylist'
+        redis.rpush('mylist', 1)
+        redis.rpush('mylist', 2)
+        redis.rpush('mylist', 'three')
+        # immediate fail
+        redis.badcommandforfail 
+        # fail on exec
+        redis.hget 'mylist', 'yeahright'
+        # should still work after failures
+        redis.lrange 'mylist', 0, -1
+        redis.exec.callback do |results|
           full_results = results
         end.errback do |err|
           error = err
@@ -45,9 +45,9 @@ describe 'Redis Multi/Exec' do
         redis.del 'mylist'
         redis.watch 'mylist'
         redis.set 'mylist', 'tripped'
-        redis.multi_exec do |multi|
-          multi.get 'mylist'
-        end.callback do |results|
+        redis.multi
+        redis.get 'mylist'
+        redis.exec.callback do |results|
           full_results = results
         end.errback do |err|
           error = true
@@ -66,22 +66,22 @@ describe 'Redis Multi/Exec' do
     it 'runs a multi with failures' do
       inner_result = full_results = error = false
       synchrony do |redis, r|
-        full_results = r.multi_exec do |multi|
-          multi.set 'mykey', 'myfoo'
-          multi.get('mykey').callback do |msg|
-            inner_result = msg
-          end
-          multi.del 'mylist'
-          multi.rpush('mylist', 1)
-          multi.rpush('mylist', 2)
-          multi.rpush('mylist', 'three')
-          # immediate fail
-          multi.badcommandforfail 
-          # fail on exec
-          multi.hget 'mylist', 'yeahright'
-          # should still work after failures
-          multi.lrange 'mylist', 0, -1
+        redis.multi
+        redis.set 'mykey', 'myfoo'
+        redis.get('mykey').callback do |msg|
+          inner_result = msg
         end
+        redis.del 'mylist'
+        redis.rpush('mylist', 1)
+        redis.rpush('mylist', 2)
+        redis.rpush('mylist', 'three')
+        # immediate fail
+        redis.badcommandforfail 
+        # fail on exec
+        redis.hget 'mylist', 'yeahright'
+        # should still work after failures
+        redis.lrange 'mylist', 0, -1
+        full_results = r.exec
       end
       flunk error if error
       inner_result.must_equal 'myfoo'
@@ -98,9 +98,9 @@ describe 'Redis Multi/Exec' do
         redis.del 'mylist'
         redis.watch 'mylist'
         redis.set 'mylist', 'tripped'
-        full_results = r.multi_exec do |multi|
-          multi.get('mylist').callback {|e| p e}
-        end
+        redis.multi
+        redis.get('mylist').callback {|e| p e}
+        full_results = r.exec
       end
       full_results.must_equal nil
     end

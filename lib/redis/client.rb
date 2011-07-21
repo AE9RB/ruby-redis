@@ -32,33 +32,6 @@ class Redis
       
     end
 
-
-    # Yielded by multi_exec to proxy and collect commands
-    class Multi < Command
-      include Enumerable
-      def initialize *args
-        super
-        @commands = []
-      end
-      def each
-        @commands.each {|x|yield x}
-      end
-      def method_missing method, *args, &block
-        command = @connection.new_command true, false, method, *args
-        proxy = @connection.new_command false, true, method
-        command.callback do |status|
-          @commands << proxy
-        end
-        command.errback do |err|
-          @commands << err
-          proxy.fail err
-        end
-        proxy.callback &block if block
-        return proxy
-      end
-    end
-  
-    
     def initialize options={}
       if defined? Hiredis and defined? Hiredis::Reader
         @reader = Hiredis::Reader.new
@@ -66,6 +39,7 @@ class Redis
         @reader = Reader.new
       end
       @queue = []
+      @multi = nil
       @pubsub_callback = proc{}
     end
   
@@ -75,9 +49,9 @@ class Redis
       end
     end
   
-    # This is simple and fast but not tolerant to programming errors.
+    # This is simple and fast but doesn't test for programming errors.
     # Don't send non-pubsub commands while subscribed and you're fine.
-    # Subclass Redis and/or create a defensive layer if you need to.
+    # Subclass Client and/or create a defensive layer if you need to.
     def on_pubsub &block
       @pubsub_callback = block
     end
@@ -107,29 +81,41 @@ class Redis
     end
     
     def method_missing method, *args, &block
-      deferrable = new_command true, true, method, *args
-      deferrable.callback &block if block
-      deferrable
-    end
-  
-    # Wrap around multi and exec.  Leaves the raw calls
-    # to multi and exec open for custom implementations.
-    def multi_exec
-      self.multi.errback do |r|
-        # This usually happens in the case of a programming error.
-        # Sometimes it is called when the connection breaks.
-        self.close_connection
+      if @multi and ![:multi, :exec].include? method
+        for_queue = new_command true, false, method, *args
+        command = new_command false, true, method
+        callback_multi = @multi
+        for_queue.callback do |status|
+          callback_multi << command
+        end
+        for_queue.errback do |err|
+          callback_multi << err
+          command.fail err
+        end
+      else
+        command = new_command true, true, method, *args
       end
-      yield redis_multi = Multi.new(self)
-      redis_exec = self.exec
+      command.callback &block if block
+      command
+    end
+    
+    def in_multi?
+      !!@multi
+    end
+    
+    def multi *args
+      @multi ||= []
+      method_missing :multi, *args
+    end
+    
+    def exec *args
+      redis_exec = method_missing :exec, *args
+      callback_multi = @multi
+      @multi = nil
       redis_exec.callback do |results|
-        # Normalized results include syntax errors and original references.
-        # Command callbacks are meant to run before exec callbacks.
-        if results == nil
-          redis_exec.succeed nil
-        else
+        if results
           normalized_results = []
-          redis_multi.each do |command|
+          callback_multi.each do |command|
             if Exception === command
               normalized_results << command
             else
@@ -145,38 +131,8 @@ class Redis
           redis_exec.succeed normalized_results
         end
       end
-      redis_exec
-    end
-
-    def new_command do_send, do_transform, method, *args
-      command = Command.new self
-      if do_send
-        send_redis args.reduce([method]){ |arr, arg|
-          if Hash === arg
-            arr += arg.to_a.flatten 1
-          else
-            arr << arg
-          end
-        }
-        @queue.push command
-      end
-      if do_transform
-        if transform = self.class.transforms[method]
-          command.callback do |data|
-            result = transform.call data
-            if Proc === result
-              command.succeed nil
-              @pubsub_callback.call result.call
-            else
-              command.succeed result
-            end
-          end
-        end
-      end
-      command
     end
     
-
     # Some data is best transformed into a Ruby type.  You can set up global
     # transforms here that are automatically attached to command callbacks.
     #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
@@ -217,7 +173,36 @@ class Redis
         }
       }.call
     end
+    
+    private
 
-  end
-  
+    def new_command do_send, do_transform, method, *args
+      command = Command.new self
+      if do_send
+        send_redis args.reduce([method]){ |arr, arg|
+          if Hash === arg
+            arr += arg.to_a.flatten 1
+          else
+            arr << arg
+          end
+        }
+        @queue.push command
+      end
+      if do_transform
+        if transform = self.class.transforms[method]
+          command.callback do |data|
+            result = transform.call data
+            if Proc === result
+              command.succeed nil
+              @pubsub_callback.call result.call
+            else
+              command.succeed result
+            end
+          end
+        end
+      end
+      command
+    end
+
+  end  
 end
