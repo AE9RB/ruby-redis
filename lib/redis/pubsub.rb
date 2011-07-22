@@ -1,7 +1,6 @@
 require 'eventmachine'
 
 class Redis
-  
   module PubSub
     
     class Subscription
@@ -147,6 +146,5 @@ class Redis
       Subscription.publish channel, message
     end
     
-      
   end
 end

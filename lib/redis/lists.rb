@@ -1,7 +1,6 @@
 require 'eventmachine'
 
 class Redis
-  
   module Lists
     
     class DeferredPop

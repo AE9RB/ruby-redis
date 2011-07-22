@@ -157,7 +157,6 @@ class Redis
     rescue
       false
     end
-    
       
   end
 end

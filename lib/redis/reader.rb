@@ -1,10 +1,9 @@
 class Redis
-  
-  # This is almost as fast as hiredis/reader plus it supports servers
   class Reader < Array
 
     # Minimize the amount of memory copying. The primary
     # performance trick is to String#split and work with that.
+    # This is almost as fast as hiredis/reader plus it supports servers
 
     #TODO configurable limits
     #TODO max buffer size based on limits

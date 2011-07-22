@@ -33,7 +33,6 @@ describe 'Redis Client' do
         r.del('mylist')
         r.rpush('mylist', 'whee').must_equal 1
         r.blpop('mylist', 0).must_equal ['mylist', 'whee']
-        r.timeout = 5
         r.blpop('mylist', 1).must_be_nil
       end
     end

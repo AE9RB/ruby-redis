@@ -4,7 +4,6 @@ require 'eventmachine'
 end
 
 class Redis
-  
   class Client < EventMachine::Connection
   
     include Sender

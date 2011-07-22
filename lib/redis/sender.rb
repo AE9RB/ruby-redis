@@ -1,5 +1,4 @@
 class Redis
-
   module Sender
 
     def send_redis data
@@ -45,5 +44,4 @@ class Redis
     end
     
   end
-    
 end
