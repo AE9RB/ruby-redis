@@ -97,7 +97,7 @@ start_server {tags {"other"}} {
         catch {[r watch x]} err
         r exec
         set _ $err
-    } {*ERR WATCH*}
+    } {*ERR*WATCH*}
 
     test {APPEND basics} {
         list [r append foo bar] [r get foo] \

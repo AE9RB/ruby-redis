@@ -20,7 +20,7 @@ class Redis
       return unless @reader
       @reader.feed data
       until (strings = @reader.gets) == false
-        if @multi and !%w{MULTI EXEC DEBUG DISCARD}.include?(strings[0].upcase)
+        if @multi and !%w{WATCH DISCARD MULTI EXEC DEBUG}.include?(strings[0].upcase)
           @multi << strings
           send_redis :'+QUEUED'
         else
@@ -48,6 +48,7 @@ class Redis
     end
 
     def redis_WATCH *keys
+      raise 'WATCH inside MULTI is not allowed' if @multi
       @watcher ||= Database::Watcher.new
       @watcher.bind @database, *keys
       :'+OK'
