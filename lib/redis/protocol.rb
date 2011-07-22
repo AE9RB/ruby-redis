@@ -42,8 +42,8 @@ class Redis
     rescue Exception => e
       raise e if Interrupt === e
       # This sometimes comes in handy for the TCL tests
-      # Redis.logger.warn "#{e.class}:/#{e.backtrace[0]} #{e.message}"
-      # e.backtrace[1..-1].each {|bt|Redis.logger.warn bt}
+      # @logger.warn "#{e.class}:/#{e.backtrace[0]} #{e.message}"
+      # e.backtrace[1..-1].each {|bt| @logger.warn bt}
       send_data "-ERR #{e.class.name}: #{e.message}\r\n" 
     end
 

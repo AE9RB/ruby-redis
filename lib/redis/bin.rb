@@ -13,7 +13,8 @@ class Redis
       include Protocol
       include Sender
       
-      def initialize databases, config={}
+      def initialize logger, databases, config={}
+        @logger = logger
         @databases = databases
         @database = databases[0]
         @config = config
@@ -58,24 +59,28 @@ class Redis
 
       config = Config.new(ARGV.empty? ? [] : ARGF)
 
+      Dir.chdir config[:dir]
+      
+      if config[:logfile] == 'stdout'
+        logger = Logger.new STDOUT
+      else
+        logger = Logger.new config[:logfile] 
+      end
+
       if config[:loglevel] == 'debug'
-        Redis.logger.level = Logger::DEBUG
+        logger.level = Logger::DEBUG
       elsif config[:loglevel] == 'notice'
-        Redis.logger.level = Logger::NOTICE
+        logger.level = Logger::NOTICE
       elsif config[:loglevel] == 'warning'
-        Redis.logger.level = Logger::WARNING
+        logger.level = Logger::WARNING
       elsif config[:loglevel] != 'verbose'
         raise "Invalid log level. Must be one of debug, notice, warning, verbose."
       else
-        Redis.logger.level = Logger::INFO
+        logger.level = Logger::INFO
       end
 
-      Dir.chdir config[:dir]
-      
-      Redis.logger config[:logfile] unless config[:logfile] == 'stdout'
-
       if show_no_config_warning
-        Redis.logger.warn "Warning: no config file specified, using the default config. In order to specify a config file use 'ruby-redis /path/to/redis.conf'"
+        logger.warn "Warning: no config file specified, using the default config. In order to specify a config file use 'ruby-redis /path/to/redis.conf'"
       end
       
       if config[:daemonize]
@@ -90,7 +95,7 @@ class Redis
             io.write "%d\n" % Process.pid
           end
         rescue Exception => e
-          Redis.logger.error e.message
+          logger.error e.message
         end
       end
       
@@ -100,17 +105,17 @@ class Redis
         started_message = "Server started, Ruby Redis version %s" % Redis::VERSION
   
         if config[:unixsocket]
-          EventMachine::start_server config[:unixsocket], RubyRedisServer, databases, config
-          Redis.logger.notice started_message
-          Redis.logger.notice "The server is now ready to accept connections at %s" % config[:unixsocket]
+          EventMachine::start_server config[:unixsocket], RubyRedisServer, logger, databases, config
+          logger.notice started_message
+          logger.notice "The server is now ready to accept connections at %s" % config[:unixsocket]
         else
-          EventMachine::start_server config[:bind], config[:port], RubyRedisServer, databases, config
-          Redis.logger.notice started_message
-          Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
+          EventMachine::start_server config[:bind], config[:port], RubyRedisServer, logger, databases, config
+          logger.notice started_message
+          logger.notice "The server is now ready to accept connections on port %d" % config[:port]
         end
         
         # The test suite blocks until it gets the pid from the log.
-        Redis.logger.flush
+        logger.flush
 
       }
       

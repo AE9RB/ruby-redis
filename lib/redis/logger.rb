@@ -1,19 +1,10 @@
 require 'logger'
 
 class Redis
-  
-  # Create log entry example:
-  # Redis.logger.notice "Server started, Redis version %s (Ruby)" % Redis::VERSION
-  # Change device example:
-  # Redis.logger config[:logfile] unless config[:logfile] == 'stdout'
-  def self.logger(logdev = nil, *opts)
-    @@logger = nil if logdev
-    @@logger ||= Logger.new(logdev||STDOUT, *opts)
-  end
-  
-  # Redis levels are: DEBUG < INFO < NOTICE < WARNING
-  # This logger inserts support for NOTICE
   class Logger < ::Logger
+
+    # Redis levels are: DEBUG < INFO < NOTICE < WARNING
+    # This logger inserts support for NOTICE
     
     def initialize(logdev, *args)
       super
@@ -75,6 +66,4 @@ class Redis
     end
     
   end
-  
-  
 end
