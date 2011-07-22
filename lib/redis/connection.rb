@@ -7,7 +7,7 @@ class Redis
     end
 
     def redis_SELECT db_index
-      database = Redis.databases[redis_i db_index]
+      database = @databases[redis_i db_index]
       raise 'invalid DB index' unless database
       @database = database
       :'+OK'

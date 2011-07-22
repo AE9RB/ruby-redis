@@ -150,8 +150,8 @@ class Redis
     
     def redis_MOVE key, db
       raise unless @database.has_key? key
-      raise if Redis.databases[redis_i db].has_key? key
-      Redis.databases[redis_i db][key] = @database[key]
+      raise if @databases[redis_i db].has_key? key
+      @databases[redis_i db][key] = @database[key]
       @database.delete key
       true
     rescue

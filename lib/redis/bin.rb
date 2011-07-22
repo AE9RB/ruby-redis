@@ -13,13 +13,14 @@ class Redis
       include Protocol
       include Sender
       
-      def initialize config={}
+      def initialize databases, config={}
+        @databases = databases
+        @database = databases[0]
         @config = config
         super
       end
       
       def post_init
-        @database = Redis.databases[0]
         authorized nil
         set_comm_inactivity_timeout @config[:timeout]
       end
@@ -77,10 +78,6 @@ class Redis
         Redis.logger.warn "Warning: no config file specified, using the default config. In order to specify a config file use 'ruby-redis /path/to/redis.conf'"
       end
       
-      (0...config[:databases]).each do |db_index|
-        Redis.databases[db_index] ||= Database.new
-      end
-
       if config[:daemonize]
         exit!(0) if fork
         Process::setsid
@@ -99,14 +96,15 @@ class Redis
       
       EventMachine.run {
 
+        databases = Array.new(config[:databases]) {Database.new}
         started_message = "Server started, Ruby Redis version %s" % Redis::VERSION
   
         if config[:unixsocket]
-          EventMachine::start_server config[:unixsocket], RubyRedisServer, config
+          EventMachine::start_server config[:unixsocket], RubyRedisServer, databases, config
           Redis.logger.notice started_message
           Redis.logger.notice "The server is now ready to accept connections at %s" % config[:unixsocket]
         else
-          EventMachine::start_server config[:bind], config[:port], RubyRedisServer, config
+          EventMachine::start_server config[:bind], config[:port], RubyRedisServer, databases, config
           Redis.logger.notice started_message
           Redis.logger.notice "The server is now ready to accept connections on port %d" % config[:port]
         end

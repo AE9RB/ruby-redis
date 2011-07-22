@@ -1,9 +1,4 @@
 class Redis
-
-  def self.databases
-    @@databases ||= [Database.new]
-  end
-    
   class Database
     
     class Watcher
@@ -135,5 +130,4 @@ class Redis
     end
     
   end
-  
 end

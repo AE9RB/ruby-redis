@@ -8,7 +8,7 @@ class Redis
     end
 
     def redis_FLUSHALL
-      Redis.databases.each do |database|
+      @databases.each do |database|
         database.clear
       end
       :'+OK'
