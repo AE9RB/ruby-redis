@@ -14,20 +14,16 @@ class Redis
       include EventMachine::Deferrable
       
       def initialize connection
-        return unless connection
         @connection = connection
-        self.errback do |msg|
-          # game over on timeout
-          @connection.close_connection unless msg
-        end
       end
+
+      undef_method :timeout
       
       # EventMachine older than 1.0.0.beta.4 doesn't return self
       test = self.new nil
       unless self === test.callback{}
         def callback; super; self; end
         def errback; super; self; end
-        def timeout *args; super; self; end
       end
       
     end
@@ -135,9 +131,9 @@ class Redis
     
     # Some data is best transformed into a Ruby type.  You can set up global
     # transforms here that are automatically attached to command callbacks.
-    #   Redis.transforms[:mycustom1] = Redis.transforms[:exists] # boolean
-    #   Redis.transforms[:mycustom2] = proc { |data| MyType.new data }
-    #   Redis.transforms.delete :hgetall # if you prefer the array
+    #   Redis::Client.transforms[:mycustom1] = Redis::Client.transforms[:exists] # boolean
+    #   Redis::Client.transforms[:mycustom2] = proc { |data| MyType.new data }
+    #   Redis::Client.transforms.delete :hgetall # if you prefer the array
     def self.transforms
       @@transforms ||= lambda {
         boolean = lambda { |tf| tf[0] == 1 ? true : false }

@@ -84,7 +84,7 @@ describe 'Redis Client' do
           result = msg
         end.errback do |e|
           error = e
-        end.timeout 5
+        end
         redis.synchrony.ping
       end
       flunk error if error
