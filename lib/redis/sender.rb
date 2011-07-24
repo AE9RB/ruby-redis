@@ -13,9 +13,9 @@ module Redis
         collect << :':1'
       elsif Float === data and data.nan?
         collect << :':0'
-      elsif Float === data and data.infinite? || 0 > 0
+      elsif Float === data and (data.infinite? || 0) > 0
         collect << :':inf'
-      elsif Float === data and data.infinite? || 0 < 0
+      elsif Float === data and (data.infinite? || 0) < 0
         collect << :':-inf'
       elsif Hash === data
         collect << "*#{data.size * 2}"
