@@ -1,5 +1,5 @@
 require 'eventmachine'
-%w{reader sender version}.each do |file|
+%w{reader sender}.each do |file|
   require File.expand_path file, File.dirname(__FILE__)
 end
 
@@ -57,6 +57,7 @@ class Redis
         begin
           data = @reader.gets
         rescue Exception => e
+          raise e if Interrupt === e
           @queue.shift.fail e unless @queue.empty?
           close_connection
           data = false

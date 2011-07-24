@@ -1,4 +1,6 @@
-require File.expand_path 'redis/version', File.dirname(__FILE__)
+%w{redis/version redis/client}.each do |file|
+  require File.expand_path file, File.dirname(__FILE__)
+end
 
 class Redis
   

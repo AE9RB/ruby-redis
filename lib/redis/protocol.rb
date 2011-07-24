@@ -1,6 +1,6 @@
 class Redis
   module Protocol
-      
+    
     def initialize *args
       @reader = Reader.new
       @multi = nil
@@ -85,11 +85,18 @@ class Redis
       end
       send_data "*#{@multi.size}\r\n"
       response = []
-      @multi.each do |strings| 
-        result = __send__ "redis_#{strings[0].upcase}", *strings[1..-1]
+      @multi.each do |strings|
+        begin
+          result = __send__ "redis_#{strings[0].upcase}", *strings[1..-1]
+        rescue Exception => e
+          raise e if Interrupt === e
+          result = e
+        end
         if EventMachine::Deferrable === result
           result.unbind
           send_redis nil
+        elsif Exception === result
+          send_data "-ERR #{result.class.name}: #{result.message}"
         else
           send_redis result
         end

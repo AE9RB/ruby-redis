@@ -42,6 +42,7 @@ class Redis
   class Client
 
     def synchrony
+      raise 'you probably want Redis.synchrony instead' if block_given?
       @synchrony ||= Synchrony.new self
     end
   
