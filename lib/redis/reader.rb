@@ -5,17 +5,26 @@ module Redis
     # performance trick is to String#split and work with that.
     # This is almost as fast as hiredis/reader plus it supports servers
 
-    #TODO configurable limits
-    #TODO max buffer size based on limits
-    
-    def initialize
+    def initialize options={}
       super()
+      @multibulk_limit = options[:multibulk_limit] || 1024*1024
+      @bulk_limit = options[:bulk_limit] || 512*1024*1024
+      @buffer_overflow = false
       flush
     end
     
-    alias :feed :push
+    def feed data
+      return if @buffer_overflow
+      if reduce(0){|t,e|t+e.bytesize} > @bulk_limit + 2
+        @buffer_overflow = true
+        flush
+        return
+      end
+      push data
+    end
     
     def gets
+      raise 'buffer overflow' if @buffer_overflow
       if @completed.empty?
         unshift_split if @split
         frame do |str|
@@ -89,7 +98,7 @@ module Redis
               yield []
             elsif @remaining == -1
               yield nil
-            elsif @remaining > 1024*1024
+            elsif @remaining > @multibulk_limit
               flush
               raise 'invalid multibulk length'
             elsif prev_remaining > 0
@@ -101,7 +110,7 @@ module Redis
             if @binary_size == -1
               @binary_size = nil
               yield nil
-            elsif (@binary_size == 0 and line[1..1] != '0') or @binary_size < 0 or @binary_size > 512*1024*1024
+            elsif (@binary_size == 0 and line[1..1] != '0') or @binary_size < 0 or @binary_size > @bulk_limit
               flush
               raise 'invalid bulk length'
             end
