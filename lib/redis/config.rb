@@ -1,4 +1,4 @@
-class Redis
+module Redis
   class Config < Hash
     
     INTEGERS = [:port, :timeout, :databases]

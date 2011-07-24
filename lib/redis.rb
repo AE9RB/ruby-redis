@@ -2,7 +2,7 @@
   require File.expand_path file, File.dirname(__FILE__)
 end
 
-class Redis
+module Redis
   
   # This space intentionally blank
 

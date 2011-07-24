@@ -1,4 +1,4 @@
-class Redis
+module Redis
   
   # This is faster and allows for experimentation with duck-typing.
   module NotStrict

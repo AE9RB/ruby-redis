@@ -1,4 +1,4 @@
-class Redis
+module Redis
   
   # Note: Redis does not have a dedicated integer type.
   # Integer operations will convert values to integers.

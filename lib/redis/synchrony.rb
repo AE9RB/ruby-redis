@@ -1,7 +1,7 @@
 require 'fiber'
 require File.expand_path 'client', File.dirname(__FILE__)
 
-class Redis
+module Redis
   
   # Compatible with em-synchrony
   

@@ -1,4 +1,4 @@
-class Redis
+module Redis
   module Protocol
     
     def initialize *args

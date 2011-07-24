@@ -1,6 +1,6 @@
 require 'eventmachine'
 
-class Redis
+module Redis
   module Lists
     
     class DeferredPop

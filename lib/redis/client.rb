@@ -3,7 +3,7 @@ require 'eventmachine'
   require File.expand_path file, File.dirname(__FILE__)
 end
 
-class Redis
+module Redis
   class Client < EventMachine::Connection
   
     include Sender

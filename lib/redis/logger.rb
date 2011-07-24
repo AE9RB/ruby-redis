@@ -1,6 +1,6 @@
 require 'logger'
 
-class Redis
+module Redis
   class Logger < ::Logger
 
     # Redis levels are: DEBUG < INFO < NOTICE < WARNING

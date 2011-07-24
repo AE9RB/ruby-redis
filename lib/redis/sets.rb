@@ -1,6 +1,6 @@
 require 'set'
 
-class Redis
+module Redis
   module Sets
   
     def redis_SADD key, member

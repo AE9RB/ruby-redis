@@ -1,4 +1,4 @@
-class Redis
+module Redis
   class Reader < Array
 
     # Minimize the amount of memory copying. The primary

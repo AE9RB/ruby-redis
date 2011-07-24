@@ -1,4 +1,4 @@
-class Redis
+module Redis
   
   #WARN Time complexity may not match C version in this module yet.
   #TODO Should add and delete manipulate @keys instead of clearing?

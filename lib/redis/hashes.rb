@@ -1,4 +1,4 @@
-class Redis
+module Redis
   module Hashes
     
     def redis_HSET key, field, value

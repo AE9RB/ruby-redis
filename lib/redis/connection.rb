@@ -1,4 +1,4 @@
-class Redis
+module Redis
   module Connection
     
     def redis_AUTH password

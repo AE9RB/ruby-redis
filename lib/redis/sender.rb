@@ -1,4 +1,4 @@
-class Redis
+module Redis
   module Sender
 
     def send_redis data

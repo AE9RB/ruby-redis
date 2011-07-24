@@ -1,4 +1,4 @@
-class Redis
+module Redis
   class Database
     
     class Watcher

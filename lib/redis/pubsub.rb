@@ -1,6 +1,6 @@
 require 'eventmachine'
 
-class Redis
+module Redis
   module PubSub
     
     class Subscription

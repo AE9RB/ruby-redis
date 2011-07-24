@@ -1,4 +1,4 @@
-class Redis
+module Redis
   module Keys
     
     def redis_RANDOMKEY
