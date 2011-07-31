@@ -8,15 +8,8 @@ module Redis
   
     include Sender
     
-    if defined? EventMachine::Completion
-      class Command < EventMachine::Completion
-      end
-    else
-      class Command
-        include EventMachine::Deferrable
-      end
-    end
     class Command
+      include EventMachine::Deferrable
       # EventMachine::Deferrable older than 1.0.0.beta.4 doesn't return self
       # EventMachine::Completion doesn't return self in any version
       test = self.new
