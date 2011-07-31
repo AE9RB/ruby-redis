@@ -7,27 +7,26 @@ module Redis
   class Client < EventMachine::Connection
   
     include Sender
-  
-    class Command
-      
-      include EventMachine::Deferrable
-      
-      def initialize connection
-        @connection = connection
+    
+    if defined? EventMachine::Completion
+      class Command < EventMachine::Completion
       end
-
-      undef_method :timeout
-      
-      # EventMachine older than 1.0.0.beta.4 doesn't return self
-      test = self.new nil
+    else
+      class Command
+        include EventMachine::Deferrable
+      end
+    end
+    class Command
+      # EventMachine::Deferrable older than 1.0.0.beta.4 doesn't return self
+      # EventMachine::Completion doesn't return self in any version
+      test = self.new
       unless self === test.callback{}
         def callback; super; self; end
         def errback; super; self; end
       end
-      
     end
 
-    def initialize options={}
+    def initialize *ignore_args
       if defined? Hiredis and defined? Hiredis::Reader
         @reader = Hiredis::Reader.new
       else
@@ -173,7 +172,7 @@ module Redis
     private
 
     def new_command do_send, do_transform, method, *args
-      command = Command.new self
+      command = Command.new
       if do_send
         send_redis args.reduce([method]){ |arr, arg|
           if Hash === arg
