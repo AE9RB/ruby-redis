@@ -94,7 +94,7 @@ module Redis
           File.open(config[:pidfile], 'w') do |io|
             io.write "%d\n" % Process.pid
           end
-        rescue Exception => e
+        rescue StandardError => e
           logger.error e.message
         end
       end

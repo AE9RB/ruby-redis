@@ -39,8 +39,7 @@ module Redis
           end
         end
       end
-    rescue Exception => e
-      raise e if Interrupt === e
+    rescue StandardError, LoadError, SyntaxError => e
       # This sometimes comes in handy for the TCL tests
       # @logger.warn "#{e.class}:/#{e.backtrace[0]} #{e.message}"
       # e.backtrace[1..-1].each {|bt| @logger.warn bt}
@@ -88,8 +87,7 @@ module Redis
       @multi.each do |strings|
         begin
           result = __send__ "redis_#{strings[0].upcase}", *strings[1..-1]
-        rescue Exception => e
-          raise e if Interrupt === e
+        rescue StandardError, LoadError, SyntaxError => e
           result = e
         end
         if EventMachine::Deferrable === result

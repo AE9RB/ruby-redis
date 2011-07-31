@@ -48,8 +48,7 @@ module Redis
       until (
         begin
           data = @reader.gets
-        rescue Exception => e
-          raise e if Interrupt === e
+        rescue StandardError => e
           @queue.shift.fail e unless @queue.empty?
           close_connection
           data = false
@@ -69,9 +68,9 @@ module Redis
     end
     
     def method_missing method, *args, &block
-      if @multi and ![:multi, :exec].include? method
+      if @multi
         for_queue = new_command true, false, method, *args
-        command = new_command false, true, method
+        command = new_command false, true, method, &block
         callback_multi = @multi
         for_queue.callback do |status|
           callback_multi << command
@@ -81,9 +80,8 @@ module Redis
           command.fail err
         end
       else
-        command = new_command true, true, method, *args
+        command = new_command true, true, method, *args, &block
       end
-      command.callback &block if block
       command
     end
     
@@ -91,13 +89,13 @@ module Redis
       !!@multi
     end
     
-    def multi *args
+    def multi *args, &block
       @multi ||= []
-      method_missing :multi, *args
+      new_command true, true, :multi, *args, &block
     end
     
-    def exec *args
-      redis_exec = method_missing :exec, *args
+    def exec *args, &block
+      redis_exec = new_command true, true, :exec, *args
       callback_multi = @multi
       @multi = nil
       redis_exec.callback do |results|
@@ -119,6 +117,8 @@ module Redis
           redis_exec.succeed normalized_results
         end
       end
+      redis_exec.callback &block if block_given?
+      redis_exec
     end
     
     # Some data is best transformed into a Ruby type.  You can set up global
@@ -164,7 +164,7 @@ module Redis
     
     private
 
-    def new_command do_send, do_transform, method, *args
+    def new_command do_send, do_transform, method, *args, &block
       command = Command.new
       if do_send
         send_redis args.reduce([method]){ |arr, arg|
@@ -189,6 +189,7 @@ module Redis
           end
         end
       end
+      command.callback &block if block_given?
       command
     end
 
