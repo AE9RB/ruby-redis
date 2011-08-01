@@ -2,177 +2,177 @@ module Redis
   
   #WARN Time complexity may not match C version in this module yet.
   #TODO Should add and delete manipulate @keys instead of clearing?
-  
-  class ZSet
-    include Enumerable
+    
+  module ZSets
+    
+    class ZSet
+      include Enumerable
 
-    def initialize
-      @hash = Hash.new
-	    @keys = nil
-	    @keys_reverse = nil
-	  end
-	  
-	  def add(o, s = 0.0)
-      @hash[o] = s
-	    @keys = nil
-	    @keys_reverse = nil
-      self
-    end
+      def initialize
+        @hash = Hash.new
+  	    @keys = nil
+  	    @keys_reverse = nil
+  	  end
 
-	  def delete(o)
-	    @keys = nil
-	    @keys_reverse = nil
-	    @hash.delete(o)
-	    self
-	  end
-	  
-	  def include?(o)
-      @hash.include?(o)
-    end
-	  
-	  def score(o)
-	    @hash[o]
-    end
-    
-    def size
-      @hash.size
-    end
-    
-    def empty?
-      @hash.empty?
-    end
-    
-	  def each
-	    block_given? or return enum_for(__method__)
-	    to_a.each { |o| yield(o) }
-	    self
-	  end
+  	  def add(o, s = 0.0)
+        @hash[o] = s
+  	    @keys = nil
+  	    @keys_reverse = nil
+        self
+      end
 
-	  def to_a
-	    unless @keys
-  	    (@keys = @hash.to_a).sort! do |a, b|
-  	      a.reverse <=> b.reverse
-	      end
-	    end
-	    @keys
-	  end
-	  
-	  def to_a_reverse
-	    unless @keys_reverse
-	      @keys_reverse = to_a.reverse
-      end
-	    @keys_reverse
-    end
+  	  def delete(o)
+  	    @keys = nil
+  	    @keys_reverse = nil
+  	    @hash.delete(o)
+  	    self
+  	  end
 
-    def range reverse, start ,stop, conversions, withscores = false
-      start = conversions.redis_i start
-      stop = conversions.redis_i stop
-      array = reverse ? to_a_reverse : to_a
-      start = 0 if start < -size
-      return array[start..stop].flatten(1) if withscores
-      (array[start..stop]||[]).collect{|i|i.first}
-    end
-    
-    def range_by_score reverse, min, max, conversions, *args
-      withscores = offset = count = nil
-      until args.empty?
-        case args.shift.upcase
-        when 'LIMIT'
-          offset = args.shift.to_i
-          count = args.shift.to_i
-        when 'WITHSCORES'
-          withscores = true
-        else
-          raise 'bad arguments'
+  	  def include?(o)
+        @hash.include?(o)
+      end
+
+  	  def score(o)
+  	    @hash[o]
+      end
+
+      def size
+        @hash.size
+      end
+
+      def empty?
+        @hash.empty?
+      end
+
+  	  def each
+  	    block_given? or return enum_for(__method__)
+  	    to_a.each { |o| yield(o) }
+  	    self
+  	  end
+
+  	  def to_a
+  	    unless @keys
+    	    (@keys = @hash.to_a).sort! do |a, b|
+    	      a.reverse <=> b.reverse
+  	      end
+  	    end
+  	    @keys
+  	  end
+
+  	  def to_a_reverse
+  	    unless @keys_reverse
+  	      @keys_reverse = to_a.reverse
         end
+  	    @keys_reverse
       end
-      result = []
-      min_exclusive = false
-      if min[0..0] == '('
-        min_exclusive = true
-        min = min[1..-1]
+
+      def range reverse, start ,stop, conversions, withscores = false
+        start = conversions.redis_i start
+        stop = conversions.redis_i stop
+        array = reverse ? to_a_reverse : to_a
+        start = 0 if start < -size
+        return array[start..stop].flatten(1) if withscores
+        (array[start..stop]||[]).collect{|i|i.first}
       end
-      min = conversions.redis_f min
-      max_exclusive = false
-      if max[0..0] == '('
-        max_exclusive = true
-        max = max[1..-1]
-      end
-      max = conversions.redis_f max
-      if reverse
-        x = min; min = max; max = x
-      end
-      (reverse ? to_a_reverse : to_a).each do |member, score|
-        next if min > score or (min_exclusive and min >= score)
-        next if max < score or (max_exclusive and max <= score)
-        if offset
-          offset -= 1
-          next unless offset < 0
-          offset = nil
-        end
-        result << member
-        result << score if withscores
-        if count
-          count -= 1
-          break if count == 0
-        end
-      end
-      result
-    end
-    
-    def self.aggregate database, is_and, destination, numkeys, conversions, *args
-      numkeys = numkeys.to_i
-      aggregate = 'SUM'
-      keys = []
-      keys << args.shift while (numkeys -= 1) >= 0
-      weights = Array.new keys.size, 1
-      until args.empty?
-        case args.shift.upcase
-        when 'WEIGHTS'
-          weights = []
-          keys.size.times {weights << conversions.redis_f(args.shift, 'weight value is not a double')}
-        when 'AGGREGATE'
-          aggregate = args.shift.upcase
-        else
-          raise 'bad arguments'
-        end
-      end
-      results = []
-      keys.zip(weights) do |key, weight|
-        inner_result = ZSet.new
-        record = database[key] || ZSet.new
-        record.each do |member, score|
-          inner_result.add member, (score||1) * weight
-        end
-        results << inner_result
-      end
-      result = results.reduce do |memo, result|
-        n = is_and ? new : memo
-        result.each do |member, score|
-          next if is_and and !memo.include?(member)
-          test = [score, memo.score(member)].compact
-          text << 0 if test.empty?
-          case aggregate
-          when 'SUM'
-            score = test.reduce :+
-          when 'MIN'
-            score = test.min
-          when 'MAX'
-            score = test.max
+
+      def range_by_score reverse, min, max, conversions, *args
+        withscores = offset = count = nil
+        until args.empty?
+          case args.shift.upcase
+          when 'LIMIT'
+            offset = args.shift.to_i
+            count = args.shift.to_i
+          when 'WITHSCORES'
+            withscores = true
           else
             raise 'bad arguments'
           end
-          n.add member, score 
         end
-        n
+        result = []
+        min_exclusive = false
+        if min[0..0] == '('
+          min_exclusive = true
+          min = min[1..-1]
+        end
+        min = conversions.redis_f min
+        max_exclusive = false
+        if max[0..0] == '('
+          max_exclusive = true
+          max = max[1..-1]
+        end
+        max = conversions.redis_f max
+        if reverse
+          x = min; min = max; max = x
+        end
+        (reverse ? to_a_reverse : to_a).each do |member, score|
+          next if min > score or (min_exclusive and min >= score)
+          next if max < score or (max_exclusive and max <= score)
+          if offset
+            offset -= 1
+            next unless offset < 0
+            offset = nil
+          end
+          result << member
+          result << score if withscores
+          if count
+            count -= 1
+            break if count == 0
+          end
+        end
+        result
       end
-      database[destination] = result unless result.empty?
-      result.size
+
+      def self.aggregate database, is_and, destination, numkeys, conversions, *args
+        numkeys = numkeys.to_i
+        aggregate = 'SUM'
+        keys = []
+        keys << args.shift while (numkeys -= 1) >= 0
+        weights = Array.new keys.size, 1
+        until args.empty?
+          case args.shift.upcase
+          when 'WEIGHTS'
+            weights = []
+            keys.size.times {weights << conversions.redis_f(args.shift, 'weight value is not a double')}
+          when 'AGGREGATE'
+            aggregate = args.shift.upcase
+          else
+            raise 'bad arguments'
+          end
+        end
+        results = []
+        keys.zip(weights) do |key, weight|
+          inner_result = ZSet.new
+          record = database[key] || ZSet.new
+          record.each do |member, score|
+            inner_result.add member, (score||1) * weight
+          end
+          results << inner_result
+        end
+        result = results.reduce do |memo, result|
+          n = is_and ? new : memo
+          result.each do |member, score|
+            next if is_and and !memo.include?(member)
+            test = [score, memo.score(member)].compact
+            text << 0 if test.empty?
+            case aggregate
+            when 'SUM'
+              score = test.reduce :+
+            when 'MIN'
+              score = test.min
+            when 'MAX'
+              score = test.max
+            else
+              raise 'bad arguments'
+            end
+            n.add member, score 
+          end
+          n
+        end
+        database[destination] = result unless result.empty?
+        result.size
+      end
+
     end
-    
-  end
-  
-  module ZSets
 
     def redis_ZADD key, score, member
       record = (@database[key] ||= ZSet.new)
