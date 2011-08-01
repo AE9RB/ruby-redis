@@ -94,6 +94,9 @@ module Redis
           File.open(config[:pidfile], 'w') do |io|
             io.write "%d\n" % Process.pid
           end
+          at_exit do
+            File.delete config[:pidfile] if File.exist? config[:pidfile]
+          end
         rescue StandardError => e
           logger.error e.message
         end
