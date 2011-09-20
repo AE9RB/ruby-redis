@@ -98,20 +98,13 @@ module Redis
     end
     
     def redis_TYPE key
-      if String === @database[key]
-        'string'
-      elsif Numeric === @database[key]
-        'string'
-      elsif Array === @database[key]
-        'list'
-      elsif Set === @database[key]
-        'set'
-      elsif ZSet === @database[key]
-        'zset'
-      elsif Hash === @database[key]
-        'hash'
-      else
-        'unknown'
+      case @database[key]
+      when String, Numeric; 'string'
+      when Array; 'list'
+      when Set; 'set'
+      when ZSet; 'zset'
+      when Hash; 'hash'
+      else 'unknown'
       end
     end
 
