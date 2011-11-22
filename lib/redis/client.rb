@@ -5,9 +5,9 @@ end
 
 module Redis
   class Client < EventMachine::Connection
-  
+
     include Sender
-    
+
     class Command
       include EventMachine::Deferrable
       # EventMachine::Deferrable older than 1.0.0.beta.4 doesn't return self
@@ -29,20 +29,36 @@ module Redis
       @multi = nil
       @pubsub_callback = proc{}
     end
-  
+
+    def connection_completed
+      @connected = true
+      @port, @host = Socket.unpack_sockaddr_in(get_peername)
+    end
+
+    def close
+      @closing_connection = true
+      close_connection_after_writing
+    end
+
     def unbind
-      until @queue.empty?
-        @queue.shift.fail RuntimeError.new 'connection closed'
+      unless !@connected || @closing_connection
+        EM.add_timer(1) do
+          reconnect(@host, @port)
+        end
+      else
+        until @queue.empty?
+          @queue.shift.fail RuntimeError.new 'connection closed'
+        end
       end
     end
-  
+
     # This is simple and fast but doesn't test for programming errors.
     # Don't send non-pubsub commands while subscribed and you're fine.
     # Subclass Client and/or create a defensive layer if you need to.
     def on_pubsub &block
       @pubsub_callback = block
     end
-  
+
     def receive_data data
       @reader.feed data
       until (
@@ -66,7 +82,7 @@ module Redis
         end
       end
     end
-    
+
     def method_missing method, *args, &block
       if @multi
         for_queue = new_command true, false, method, *args
@@ -84,16 +100,16 @@ module Redis
       end
       command
     end
-    
+
     def in_multi?
       !!@multi
     end
-    
+
     def multi *args, &block
       @multi ||= []
       new_command true, true, :multi, *args, &block
     end
-    
+
     def exec *args, &block
       redis_exec = new_command true, true, :exec, *args
       callback_multi = @multi
@@ -120,7 +136,7 @@ module Redis
       redis_exec.callback &block if block_given?
       redis_exec
     end
-    
+
     # Some data is best transformed into a Ruby type.  You can set up global
     # transforms here that are automatically attached to command callbacks.
     #   Redis::Client.transforms[:mycustom1] = Redis::Client.transforms[:exists] # boolean
@@ -161,7 +177,7 @@ module Redis
         }
       }.call
     end
-    
+
     private
 
     def new_command do_send, do_transform, method, *args, &block
@@ -193,5 +209,5 @@ module Redis
       command
     end
 
-  end  
+  end
 end
